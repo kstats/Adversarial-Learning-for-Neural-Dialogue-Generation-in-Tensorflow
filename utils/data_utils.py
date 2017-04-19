@@ -324,3 +324,12 @@ def get_dummy_set(dummy_path, vocabulary, vocabulary_size, tokenizer=None):
             dummy_set.append([int(x) for x in line.split()])
             line = dummy_file.readline()
     return dummy_set
+
+def split_into_files(data_path, fname):
+  import numpy as np
+  with open(data_path+fname,'r') as f:
+    lines = np.asarray([x.strip().split('|') for x in f.readlines()])
+    with open(data_path+fname+'.query','w+') as f1:
+      f1.write('\n'.join(lines[:,0]))
+    with open(data_path+fname+'.answer','w+') as f2:
+      f2.write('\n'.join(lines[:,1]))

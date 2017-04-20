@@ -49,6 +49,7 @@ class disc_rnn_model(object):
                     if time_step>0: tf.get_variable_scope().reuse_variables()
                     (cell_output,state)=cell(inputs[:,time_step,:],state)
                     out_put.append(cell_output)
+            import pdb; pdb.set_trace()
 
             out_put=out_put*self.mask_x[:,:,None]
 

@@ -1,11 +1,11 @@
 import os
-
+import pdb
 import tensorflow as tf
 import numpy as np
 import time
 import gen.generator as gens
 import disc.discriminator as discs
-
+import utils.data_utils as data_util
 import utils.conf as conf
 
 gen_config = conf.gen_config
@@ -132,9 +132,12 @@ def al_train():
         pass
 
 def main(_):
+    translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
+    for t in translated:
+        print t
     #disc_pre_train()
     #gen_pre_train()
-    al_train()
+    #al_train()
 
 if __name__ == "__main__":
   tf.app.run()

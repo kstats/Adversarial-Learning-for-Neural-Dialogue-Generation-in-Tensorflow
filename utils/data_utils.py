@@ -333,3 +333,17 @@ def split_into_files(data_path, fname):
       f1.write('\n'.join(lines[:,0]))
     with open(data_path+fname+'.answer','w+') as f2:
       f2.write('\n'.join(lines[:,1]))
+
+def translate(data_path):
+  vocab, reverse = initialize_vocabulary("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/movie_25000")
+  sentences = []
+  with open(data_path, 'r') as f:
+    for line in f.readlines():
+      #print(line)
+      sent = ""
+      for token in line.split(" "):
+        sent += reverse[int(token) - 1] + " "
+      sentences.append(sent)
+      #print(sent)
+      #import pdb; pdb.set_trace()
+  return sentences

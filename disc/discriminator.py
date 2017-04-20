@@ -8,6 +8,7 @@ import utils.data_helper as data_helper
 import utils.conf as conf
 import sys
 sys.path.append('../utils')
+import pdb
 
 def create_model(session, config, is_training):
     """Create translation model and initialize or load parameters in session."""
@@ -52,7 +53,7 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
 
 def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, train_summary_writer, valid_summary_writer=None):
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
-
+        import pdb; pdb.set_trace()
         feed_dict={}
         feed_dict[model.input_data]=x
         feed_dict[model.target]=y
@@ -81,7 +82,6 @@ def train_step(config_disc, config_evl):
     eval_config.keep_prob=1.0
 
     train_data,valid_data,test_data=data_helper.load_data(True, config.max_len,batch_size=config.batch_size)
-
     print("begin training")
 
     # gpu_config=tf.ConfigProto()

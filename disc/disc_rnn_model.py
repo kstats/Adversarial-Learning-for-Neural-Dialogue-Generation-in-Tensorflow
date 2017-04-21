@@ -42,7 +42,7 @@ class disc_rnn_model(object):
             if self.keep_prob<1:
                 inputs = tf.nn.dropout(inputs,self.keep_prob)
 
-            out_put=[]
+            '''out_put=[]
             state=self._initial_state
             with tf.variable_scope("LSTM_layer"):
                 for time_step in range(max_len):
@@ -55,7 +55,16 @@ class disc_rnn_model(object):
 
             with tf.name_scope("mean_pooling_layer"):
 
-                out_put=tf.reduce_sum(out_put,0)/(tf.reduce_sum(self.mask_x,0)[:,None])
+                out_put=tf.reduce_sum(out_put,0)/(tf.reduce_sum(self.mask_x,0)[:,None])'''
+            with tf.variable_scope("LSTM_layer"):
+                out_put, state = tf.nn.dynamic_rnn(cell, inputs, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
+                out_put = out_put[:,-1,:]
+                #out_put = tf.pack(outputs)
+                #outputs = tf.transpose(outputs, [1, 0, 2])
+            #with tf.name_scope("mean_pooling_layer"):
+
+             #   out_put = tf.reduce_sum(out_put, 0) #/ (tf.reduce_sum(self.mask_x, 0)[:, None])
+
 
             with tf.name_scope("Softmax_layer_and_output"):
                 softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,class_num],dtype=tf.float32)

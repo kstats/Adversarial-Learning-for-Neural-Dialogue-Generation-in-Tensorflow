@@ -53,7 +53,7 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
 
 def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, train_summary_writer, valid_summary_writer=None):
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         feed_dict={}
         feed_dict[model.input_data]=x
         feed_dict[model.target]=y
@@ -121,6 +121,7 @@ def train_step(config_disc, config_evl):
         begin_time=int(time.time())
 
         for i in range(config.num_epoch):
+            #import pdb; pdb.set_trace()
             print("the %d epoch training..."%(i+1))
             lr_decay = config.lr_decay ** max(i-config.max_decay_epoch,0.0)
             model.assign_new_lr(session,config.lr*lr_decay)

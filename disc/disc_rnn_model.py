@@ -13,6 +13,9 @@ class disc_rnn_model(object):
             self.input_data=tf.placeholder(tf.int32,[None,max_len])
             self.target = tf.placeholder(tf.int64,[None])
             self.mask_x = tf.placeholder(tf.float32,[max_len,None])
+            self.context = tf.placeholder(tf.int32, [None,max_len])
+            self.response = tf.placeholder(tf.int32, [None,max_len])
+
 
             class_num=config.class_num
             hidden_neural_size=config.hidden_neural_size
@@ -31,6 +34,17 @@ class disc_rnn_model(object):
                 )
 
             cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell]*hidden_layer_num,state_is_tuple=True)
+
+            #builds second LSTM network
+            lstm_cell2 = tf.nn.rnn_cell.BasicLSTMCell(hidden_neural_size, forget_bias=0.0, state_is_tuple=True)
+            if self.keep_prob < 1:
+                lstm_cell2 = tf.nn.rnn_cell.DropoutWrapper(
+                    lstm_cell2, output_keep_prob=self.keep_prob
+                )
+
+            cell2 = tf.nn.rnn_cell.MultiRNNCell([lstm_cell2] * hidden_layer_num, state_is_tuple=True)
+
+
 
             self._initial_state = cell.zero_state(self.batch_size,dtype=tf.float32)
 
@@ -56,15 +70,23 @@ class disc_rnn_model(object):
             with tf.name_scope("mean_pooling_layer"):
 
                 out_put=tf.reduce_sum(out_put,0)/(tf.reduce_sum(self.mask_x,0)[:,None])'''
-            with tf.variable_scope("LSTM_layer"):
-                out_put, state = tf.nn.dynamic_rnn(cell, inputs, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
-                out_put = out_put[:,-1,:]
+            with tf.variable_scope("LSTM_layer_context"):
+                out_put1, state = tf.nn.dynamic_rnn(cell, self.context, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
+                out_put1 = out_put1[:,-1,:]
                 #out_put = tf.pack(outputs)
                 #outputs = tf.transpose(outputs, [1, 0, 2])
             #with tf.name_scope("mean_pooling_layer"):
 
              #   out_put = tf.reduce_sum(out_put, 0) #/ (tf.reduce_sum(self.mask_x, 0)[:, None])
+            with tf.variable_scope("LSTM_layer_response"):
+                out_put2, state = tf.nn.dynamic_rnn(cell2, self.response, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
+                out_put2 = out_put2[:,-1,:]
 
+            with tf.variable_scope("Combine_LSTM"):
+                input = tf.concat([out_put1, out_put2], 0)
+                out_put = tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
+                #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
+                
 
             with tf.name_scope("Softmax_layer_and_output"):
                 softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,class_num],dtype=tf.float32)

@@ -4,11 +4,12 @@ class disc_config(object):
     batch_size = 5
     lr = 0.1
     lr_decay = 0.6
-    vocabulary_size = 20000
+    vocabulary_size = 25000
     embed_dim = 128
     hidden_neural_size = 200
     hidden_layer_num = 3
-    train_dir = 'data/subj0.pkl'
+    train_dir = 'data/training30k.txt.query.pkl'
+    # train_dir = 'data/subj0.pkl'
     max_len = 40
     valid_num = 100
     checkpoint_num = 1000

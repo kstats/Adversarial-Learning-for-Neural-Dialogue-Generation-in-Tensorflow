@@ -132,10 +132,12 @@ def al_train():
         pass
 
 def main(_):
-    translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
-    for t in translated:
-        print t
-    #disc_pre_train()
+    seed = int(time.time())
+    np.random.seed(seed)  
+    # translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
+    # for t in translated:
+    #     print t
+    disc_pre_train()
     #gen_pre_train()
     #al_train()
 

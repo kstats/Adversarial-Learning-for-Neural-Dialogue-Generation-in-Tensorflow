@@ -1,14 +1,15 @@
 import tensorflow as tf
+import pdb
 import numpy as np
 import os
 import time
 import datetime
 import disc_rnn_model as disc_rnn_model
+# import pdb; pdb.set_trace()
 import utils.data_helper as data_helper
 import utils.conf as conf
 import sys
 sys.path.append('../utils')
-import pdb
 
 def create_model(session, config, is_training):
     """Create translation model and initialize or load parameters in session."""
@@ -44,6 +45,7 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
          correct_num+=count
 
     accuracy=float(correct_num)/total_num
+    print 'got %d out of %d\n' % (correct_num, total_num)
     dev_summary = tf.summary.scalar('dev_accuracy',accuracy)
     dev_summary = session.run(dev_summary)
     if summary_writer:
@@ -53,7 +55,7 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
 
 def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, train_summary_writer, valid_summary_writer=None):
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
-        #import pdb; pdb.set_trace()
+
         feed_dict={}
         feed_dict[model.input_data]=x
         feed_dict[model.target]=y
@@ -64,11 +66,15 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         for i , (c,h) in enumerate(model._initial_state):
             feed_dict[c]=state[i].c
             feed_dict[h]=state[i].h
+        print 'Here 0'
         cost,accuracy,_,summary = session.run(fetches,feed_dict)
+        print 'Here 1'
         train_summary_writer.add_summary(summary,global_steps)
         train_summary_writer.flush()
         valid_accuracy=evaluate(valid_model,session,valid_data,global_steps,valid_summary_writer)
-        if(global_steps%100==0):
+        print 'Here 1'        
+        # if(global_steps%100==0):
+        if(global_steps%5==0):
             print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
         global_steps+=1
 

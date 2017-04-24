@@ -5,6 +5,7 @@ date:22/11/2016
 """
 import numpy as np
 import cPickle as pkl
+import data_utils as du
 
 #file path
 dataset_path='data/subj0.pkl'
@@ -18,13 +19,14 @@ def set_dataset_path(path):
 def load_data(debug, max_len,batch_size,n_words=20000,valid_portion=0.1,sort_by_len=True):
     f=open(dataset_path,'rb')
     print ('load data from %s',dataset_path)
-    train_set = np.array(pkl.load(f))
-    test_set = np.array(pkl.load(f))
+    #train_set = np.array(pkl.load(f))
+    #test_set = np.array(pkl.load(f))
+    #TODO change this to be dynamic
+    train_set, test_set = du.create_disc_context_data("data/chitchat.train", 20000)
     print("train_set: ", np.shape(train_set))
     print("test_set: ", np.shape(test_set))
     f.close()
 
-    train_set_x,train_set_y = train_set
 
     # w_f = open("corpus", "w")
     # for x, y in zip(train_set_x, train_set_y):
@@ -32,17 +34,23 @@ def load_data(debug, max_len,batch_size,n_words=20000,valid_portion=0.1,sort_by_
     # w_f.close()
 
     #train_set length
-    n_samples= len(train_set_x)
+    n_samples= len(train_set[0])
+    print (n_samples)
     #shuffle and generate train and valid dataset
     sidx = np.random.permutation(n_samples)
     if debug: print("sidx: ", sidx)
     n_train = int(np.round(n_samples * (1. - valid_portion)))
     if debug: print("n_train: ", n_train)
+    train_set_x = [train_set[0][:n_train], train_set[1][:n_train]]
+    train_set_y = train_set[2][:n_train]
 
-    valid_set_x = [train_set_x[s] for s in sidx[n_train:]]
-    valid_set_y = [train_set_y[s] for s in sidx[n_train:]]
-    train_set_x = [train_set_x[s] for s in sidx[:n_train]]
-    train_set_y = [train_set_y[s] for s in sidx[:n_train]]
+    valid_set_x = [train_set[0][n_train:], train_set[1][n_train:]]
+    valid_set_y = train_set[2][n_train:]
+
+    #valid_set_x = [[train_set_x[0][s], train_set_x[1][s]] for s in sidx[n_train:]]
+    #valid_set_y = [train_set_y[s] for s in sidx[n_train:]]
+    '''train_set_x = [[train_set_x[0][s], train_set_x[1][s]] for s in sidx[:n_train]]
+    train_set_y = [train_set_y[s] for s in sidx[:n_train]]'''
 
     if debug: print("train_set_x[0]: ", train_set_x[0])
     if debug: print("train_set_y[0]: ", train_set_y[0])
@@ -59,20 +67,23 @@ def load_data(debug, max_len,batch_size,n_words=20000,valid_portion=0.1,sort_by_
     def remove_unk(x):
         return [[1 if w >= n_words else w for w in sen] for sen in x]
 
-    test_set_x, test_set_y = test_set
-    valid_set_x, valid_set_y = valid_set
-    train_set_x, train_set_y = train_set
+    test_set_x = [test_set[0], test_set[1]]
+    test_set_y = test_set[2]
+    '''valid_set_x = [valid_set[0], valid_set[1]]
+    valid_set_y = [valid_set[2]]
+    train_set_x = [train_set[0], train_set[1]]
+    train_set_y = train_set[2]'''
 
-    train_set_x = remove_unk(train_set_x)
+    '''train_set_x = remove_unk(train_set_x)
     valid_set_x = remove_unk(valid_set_x)
-    test_set_x = remove_unk(test_set_x)
+    test_set_x = remove_unk(test_set_x)'''
 
 
 
     def len_argsort(seq):
         return sorted(range(len(seq)), key=lambda x: len(seq[x]))
-
-    if sort_by_len:
+    #TODO rewrite this?
+    '''if sort_by_len:
         sorted_index = len_argsort(test_set_x)
         test_set_x = [test_set_x[i] for i in sorted_index]
         test_set_y = [test_set_y[i] for i in sorted_index]
@@ -84,48 +95,58 @@ def load_data(debug, max_len,batch_size,n_words=20000,valid_portion=0.1,sort_by_
 
         sorted_index = len_argsort(train_set_x)
         train_set_x = [train_set_x[i] for i in sorted_index]
-        train_set_y = [train_set_y[i] for i in sorted_index]
+        train_set_y = [train_set_y[i] for i in sorted_index]'''
 
     train_set=(train_set_x,train_set_y)
     valid_set=(valid_set_x,valid_set_y)
     test_set=(test_set_x,test_set_y)
 
 
+    #import pdb; pdb.set_trace()
 
-
-    new_train_set_x=np.zeros([len(train_set[0]),max_len])
+    new_train_set_x=np.zeros([len(train_set[0][0]),2, max_len])
     if debug: print("new_train_set: ", np.shape(new_train_set_x))
-    new_train_set_y=np.zeros(len(train_set[0]))
+    new_train_set_y=np.zeros(len(train_set[0][0]))
     if debug: print("new_train_set_y: ", np.shape(new_train_set_y))
 
-    new_valid_set_x=np.zeros([len(valid_set[0]),max_len])
-    new_valid_set_y=np.zeros(len(valid_set[0]))
+    new_valid_set_x=np.zeros([len(valid_set[0][0]),2, max_len])
+    new_valid_set_y=np.zeros(len(valid_set[0][0]))
 
-    new_test_set_x=np.zeros([len(test_set[0]),max_len])
-    new_test_set_y=np.zeros(len(test_set[0]))
+    new_test_set_x=np.zeros([len(test_set[0][0]),2, max_len])
+    new_test_set_y=np.zeros(len(test_set[0][0]))
 
-    mask_train_x=np.zeros([max_len,len(train_set[0])])
-    mask_test_x=np.zeros([max_len,len(test_set[0])])
-    mask_valid_x=np.zeros([max_len,len(valid_set[0])])
+    mask_train_x=np.zeros([max_len,len(train_set[0][0]), 2])
+    mask_test_x=np.zeros([max_len,len(test_set[0][0]), 2])
+    mask_valid_x=np.zeros([max_len,len(valid_set[0][0]), 2])
 
 
-    def padding_and_generate_mask(x,y,new_x,new_y,new_mask_x):
-
-        for i,(x,y) in enumerate(zip(x,y)):
+    def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x):
+        #import pdb; pdb.set_trace()
+        for i,(x,y) in enumerate(zip(x1[0],y1)):
             #whether to remove sentences with length larger than maxlen
             if len(x)<=max_len:
-                new_x[i,0:len(x)]=x
-                new_mask_x[0:len(x),i]=1
+                new_x[i,0,0:len(x)]=x
+                new_mask_x[0:len(x),i,0]=1
                 new_y[i]=y
             else:
-                new_x[i]=(x[0:max_len])
-                new_mask_x[:,i]=1
+                new_x[i][0]=(x[0:max_len])
+                new_mask_x[:,i,0]=1
+                new_y[i]=y
+        for i,(x,y) in enumerate(zip(x1[1],y1)):
+            #whether to remove sentences with length larger than maxlen
+            if len(x)<=max_len:
+                new_x[i,1,0:len(x)]=x
+                new_mask_x[0:len(x),i,1]=1
+                new_y[i]=y
+            else:
+                new_x[i][1]=(x[0:max_len])
+                new_mask_x[:,i,1]=1
                 new_y[i]=y
         new_set =(new_x,new_y,new_mask_x)
         del new_x,new_y
         return new_set
-
     train_set=padding_and_generate_mask(train_set[0],train_set[1],new_train_set_x,new_train_set_y,mask_train_x)
+
     test_set=padding_and_generate_mask(test_set[0],test_set[1],new_test_set_x,new_test_set_y,mask_test_x)
     valid_set=padding_and_generate_mask(valid_set[0],valid_set[1],new_valid_set_x,new_valid_set_y,mask_valid_x)
 

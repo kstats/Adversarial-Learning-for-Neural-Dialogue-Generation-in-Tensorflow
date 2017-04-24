@@ -49,12 +49,19 @@ class disc_rnn_model(object):
             self._initial_state = cell.zero_state(self.batch_size,dtype=tf.float32)
 
             #embedding layer
-            with tf.device("/cpu:0"),tf.name_scope("embedding_layer"):
-                embedding = tf.get_variable("embedding",[vocabulary_size,embed_dim],dtype=tf.float32)
-                inputs=tf.nn.embedding_lookup(embedding,self.input_data) #[batch_size, max_len, embed_dim]
+            #TODO should we make this only one embedding lookup?
+            with tf.device("/cpu:0"),tf.name_scope("embedding_layer_context"):
+                embedding_context = tf.get_variable("embedding_context",[vocabulary_size,embed_dim],dtype=tf.float32)
+                context_inputs=tf.nn.embedding_lookup(embedding_context,self.context) #[batch_size, max_len, embed_dim]
 
+            with tf.device("/cpu:0"),tf.name_scope("embedding_layer_response"):
+                embedding_response = tf.get_variable("embedding_response",[vocabulary_size,embed_dim],dtype=tf.float32)
+                response_inputs=tf.nn.embedding_lookup(embedding_response,self.response) #[batch_size, max_len, embed_dim]
+
+            #TODO how should I handle both dropouts?
             if self.keep_prob<1:
-                inputs = tf.nn.dropout(inputs,self.keep_prob)
+                context_inputs = tf.nn.dropout(context_inputs,self.keep_prob)
+                response_inputs = tf.nn.dropout(response_inputs,self.keep_prob)
 
             '''out_put=[]
             state=self._initial_state
@@ -71,7 +78,7 @@ class disc_rnn_model(object):
 
                 out_put=tf.reduce_sum(out_put,0)/(tf.reduce_sum(self.mask_x,0)[:,None])'''
             with tf.variable_scope("LSTM_layer_context"):
-                out_put1, state = tf.nn.dynamic_rnn(cell, self.context, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
+                out_put1, state = tf.nn.dynamic_rnn(cell, context_inputs, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
                 out_put1 = out_put1[:,-1,:]
                 #out_put = tf.pack(outputs)
                 #outputs = tf.transpose(outputs, [1, 0, 2])
@@ -79,12 +86,14 @@ class disc_rnn_model(object):
 
              #   out_put = tf.reduce_sum(out_put, 0) #/ (tf.reduce_sum(self.mask_x, 0)[:, None])
             with tf.variable_scope("LSTM_layer_response"):
-                out_put2, state = tf.nn.dynamic_rnn(cell2, self.response, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
+                out_put2, state = tf.nn.dynamic_rnn(cell2, response_inputs, tf.count_nonzero(self.mask_x, 0), initial_state = self._initial_state)
                 out_put2 = out_put2[:,-1,:]
 
             with tf.variable_scope("Combine_LSTM"):
-                input = tf.concat([out_put1, out_put2], 0)
-                out_put = tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
+                input = tf.concat(0, [out_put1, out_put2])
+                lstm_w = tf.get_variable("lstm_w", [input.get_shape()[1], hidden_neural_size], dtype=tf.float32)
+                lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32)
+                out_put = tf.nn.relu(tf.matmul(input,lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
                 #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
                 
 

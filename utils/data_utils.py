@@ -27,6 +27,8 @@ from six.moves import urllib
 
 from tensorflow.python.platform import gfile
 import tensorflow as tf
+import numpy as np
+import pickle
 
 # Special vocabulary symbols - we always put them at the start.
 _PAD = b"_PAD"
@@ -326,7 +328,6 @@ def get_dummy_set(dummy_path, vocabulary, vocabulary_size, tokenizer=None):
     return dummy_set
 
 def split_into_files(data_path, fname):
-  import numpy as np
   with open(data_path+fname,'r') as f:
     lines = np.asarray([x.strip().split('|') for x in f.readlines()])
     with open(data_path+fname+'.query','w+') as f1:
@@ -335,7 +336,7 @@ def split_into_files(data_path, fname):
       f2.write('\n'.join(lines[:,1]))
 
 def translate(data_path):
-  vocab, reverse = initialize_vocabulary("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/movie_25000")
+  vocab, reverse = initialize_vocabulary("./data/movie_25000")
   sentences = []
   with open(data_path, 'r') as f:
     for line in f.readlines():
@@ -347,3 +348,80 @@ def translate(data_path):
       #print(sent)
       #import pdb; pdb.set_trace()
   return sentences
+
+def fake_sentence(vocabulary_size):
+  rc = []
+  for i in range(12):
+    rc.append(np.random.randint(vocabulary_size))
+    if np.random.rand() < 0.1 and i>1:
+      break
+  return rc[:12-np.random.randint(6)]
+
+def fake_sentence_and_context(vocabulary_size):
+  rc = [[],[]]
+  for i in range(12):
+    rc[0].append(np.random.randint(vocabulary_size))
+    rc[1].append(np.random.randint(vocabulary_size))
+    if np.random.rand() < 0.1 and i>1:
+      break
+  return rc
+
+def decode_sentence(sent,vocab, reverse):
+  return ' '.join(map(lambda x: reverse[int(x)-1],sent))
+
+def create_disc_pretrain_data(fname, vocabulary_size):
+  with open(fname,'r') as f:
+    lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
+  n = len(lines)
+  l = int(0.9*n)
+  tset = lines[:l] + [fake_sentence(vocabulary_size) for _ in range(l)]
+  vset = lines[l:] + [fake_sentence(vocabulary_size) for _ in range(n-l)]
+  tlabels = [1]*l + [0]*l
+  vlabels = [1]*(n-l) + [0]*(n-l)
+  with open(fname+'.pkl','w+') as f:
+    pickle.dump((tset,tlabels),f)
+    pickle.dump((vset,vlabels),f)
+  return tset, vset
+
+
+def create_disc_context_data(fname, vocabulary_size):
+  with open(fname,'r') as f:
+    parts = [x.strip().split('|') for x in f.readlines()]
+    context = [map(int,x[0].split(" ")) for x in parts]
+    response = [map(int,x[1].split(" ")) for x in parts]
+    lines = [context, response]
+  print(np.shape(lines))
+  n = len(lines[0])
+  l = int(0.9*n)
+  tset = [lines[0][:l], lines[1][:l], [0] * l] #+ [[fake_sentence_and_context(vocabulary_size) for _ in range(l)]]
+  fake = [fake_sentence_and_context(vocabulary_size) for _ in range(l)]
+  #import pdb; pdb.set_trace()
+  for f in range(np.shape(fake)[0]):
+    tset[0].append(fake[f][0])
+    tset[1].append(fake[f][1])
+  #tset[1] = tset[1] + fake[:][1]
+  vset = [lines[0][l:], lines[1][l:], [0] * (n-l)]# + [[fake_sentence_and_context(vocabulary_size) for _ in range(n-l)]]
+  fake = [fake_sentence_and_context(vocabulary_size) for _ in range(n-l)]
+  for f in range(np.shape(fake)[0]):
+    vset[0].append(fake[f][0])
+    vset[1].append(fake[f][1])
+  print (np.shape(tset))
+  print (np.shape(vset))
+  tlabels = [1]*l + [0]*l
+  vlabels = [1]*(n-l) + [0]*(n-l)
+  tset[2] = tlabels
+  vset[2] = vlabels
+  #import pdb; pdb.set_trace()
+  print (vlabels)
+  with open(fname+'.pkl','w+') as f:
+    pickle.dump((tset,tlabels),f)
+    pickle.dump((vset,vlabels),f)
+  return tset, vset
+
+
+
+
+
+
+
+

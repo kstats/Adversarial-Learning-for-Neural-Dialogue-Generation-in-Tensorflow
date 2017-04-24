@@ -51,12 +51,15 @@ class disc_rnn_model(object):
             #embedding layer
             #TODO should we make this only one embedding lookup?
             with tf.device("/cpu:0"),tf.name_scope("embedding_layer_context"):
-                embedding_context = tf.get_variable("embedding_context",[vocabulary_size,embed_dim],dtype=tf.float32)
-                context_inputs=tf.nn.embedding_lookup(embedding_context,self.context) #[batch_size, max_len, embed_dim]
+                embedding = tf.get_variable("embedding",[vocabulary_size,embed_dim],dtype=tf.float32)
+                context_inputs=tf.nn.embedding_lookup(embedding,self.context) #[batch_size, max_len, embed_dim]
+                #embedding_response = tf.get_variable("embedding", [vocabulary_size, embed_dim],
+                 #                                    dtype=tf.float32)
+                response_inputs=tf.nn.embedding_lookup(embedding,self.response) #[batch_size, max_len, embed_dim]
 
-            with tf.device("/cpu:0"),tf.name_scope("embedding_layer_response"):
-                embedding_response = tf.get_variable("embedding_response",[vocabulary_size,embed_dim],dtype=tf.float32)
-                response_inputs=tf.nn.embedding_lookup(embedding_response,self.response) #[batch_size, max_len, embed_dim]
+            #with tf.device("/cpu:0"),tf.name_scope("embedding_layer_response"):
+             #   embedding_response = tf.get_variable("embedding_response",[vocabulary_size,embed_dim],dtype=tf.float32)
+              #  response_inputs=tf.nn.embedding_lookup(embedding_response,self.response) #[batch_size, max_len, embed_dim]
 
             #TODO how should I handle both dropouts?
             if self.keep_prob<1:

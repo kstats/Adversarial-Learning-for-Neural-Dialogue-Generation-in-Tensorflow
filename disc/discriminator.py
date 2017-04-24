@@ -55,11 +55,14 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
         #import pdb; pdb.set_trace()
         feed_dict={}
-        feed_dict[model.context]=x[0]
-        feed_dict[model.response] = x[1]
+        print(np.shape(x))
+        import pdb; pdb.set_trace()
+
+        feed_dict[model.context]=x[:,0,:]
+        feed_dict[model.response] = x[:,1,:]
         feed_dict[model.target]=y
 
-        feed_dict[model.mask_x]=mask_x
+        feed_dict[model.mask_x]=mask_x[:,:,0]
         model.assign_new_batch_size(session,len(x[0]))
         fetches = [model.cost,model.accuracy,model.train_op,model.summary]
         #state = session.run(model._initial_state)

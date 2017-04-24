@@ -28,7 +28,7 @@ class gen_config(object):
     learning_rate_decay_factor = 0.99
     max_gradient_norm = 5.0
     batch_size = 1
-    size = 512
+    size = 256
     num_layers = 2
     vocab_size = 25000
     data_dir = "data/"

@@ -40,13 +40,14 @@ class Seq2SeqModel(object):
 
         def policy_gradient(logit, labels):
             def softmax(x):
+                #print (x.eval())
                 return tf.exp(x) / tf.reduce_sum(tf.exp(x), reduction_indices=0)
             prob = softmax(logit)
             #token = tf.argmax(logit, 0)
             return tf.reduce_max(prob)
-            pass
+            #pass
         #softmax_loss_function = policy_gradient
-        pass
+        #pass
 
         if num_samples > 0 and num_samples < self.target_vocab_size:
             w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype)
@@ -69,8 +70,10 @@ class Seq2SeqModel(object):
 
         # softmax_loss_function = control_flow_ops.cond(self.up_reward,
         #                                       lambda:policy_gradient,
+        #
         #                                       lambda:sampled_loss)
-        softmax_loss_function = policy_gradient
+        else:
+            softmax_loss_function = policy_gradient
 
         #loss_function = tf.select(self.up_reward, policy_gradient, softmax_loss_function)
 
@@ -244,7 +247,7 @@ class Seq2SeqModel(object):
         encoder_input = encoder_input_a[batch_i]
       elif type == 0:
           encoder_input, decoder_input = random.choice(train_data[bucket_id])
-          print("train en: %s, de: %s" %(encoder_input, decoder_input))
+          #print("train en: %s, de: %s" %(encoder_input, decoder_input))
 
       batch_source_encoder.append(encoder_input)
       batch_source_decoder.append(decoder_input)

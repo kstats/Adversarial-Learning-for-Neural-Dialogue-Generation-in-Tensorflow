@@ -40,31 +40,51 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     #print("new_train_set_y: ", np.shape(new_train_set_y))
     mask_train_x=np.zeros([disc_config.max_len,len(train_set[0])])
 
-    def padding_and_generate_mask(x,y,new_x,new_y,new_mask_x):
-        for i,(x,y) in enumerate(zip(x,y)):
+    def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x, responses):
+        #import pdb; pdb.set_trace()
+        max_len = disc_config.max_len
+        for i,(x,y) in enumerate(zip(x1,y1)):
             #whether to remove sentences with length larger than maxlen
-            if len(x)<=disc_config.max_len:
-                new_x[i,0:len(x)]=x
-                new_mask_x[0:len(x),i]=1
+            if len(x)<=max_len:
+                new_x[i,0,0:len(x)]=x
+                new_mask_x[0:len(x),i,0]=1
                 new_y[i]=y
             else:
-                new_x[i]=(x[0:disc_config.max_len])
-                new_mask_x[:,i]=1
+                new_x[i][0]=(x[0:max_len])
+                new_mask_x[:,i,0]=1
+                new_y[i]=y
+        for i,(x,y) in enumerate(zip(responses,y1)):
+            #whether to remove sentences with length larger than maxlen
+            if len(x)<=max_len:
+                new_x[i,1,0:len(x)]=x
+                new_mask_x[0:len(x),i,1]=1
+                new_y[i]=y
+            else:
+                new_x[i][1]=(x[0:max_len])
+                new_mask_x[:,i,1]=1
                 new_y[i]=y
         new_set =(new_x,new_y,new_mask_x)
         del new_x,new_y
         return new_set
 
     train_inputs, train_labels, train_masks =padding_and_generate_mask(train_set[0],train_set[1],
-                                                                     new_train_set_x,new_train_set_y,mask_train_x)
+                                                                     new_train_set_x,new_train_set_y,mask_train_x, responses)
     return train_inputs, train_labels, train_masks, responses
 
 # discriminator api
 def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
     feed_dict={}
-    feed_dict[disc_model.input_data]=train_inputs
-    feed_dict[disc_model.target]=train_labels
-    feed_dict[disc_model.mask_x]=train_masks
+    #feed_dict[disc_model.input_data]=train_inputs
+    #feed_dict[disc_model.target]=train_labels
+    #feed_dict[disc_model.mask_x]=train_masks
+
+    feed_dict[disc_model.context] = train_inputs[:, 0, :]
+    feed_dict[disc_model.response] = train_inputs[:, 1, :]
+    feed_dict[disc_model.target] = train_labels
+
+    feed_dict[disc_model.mask_c] = train_masks[:, :, 0]
+    feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
+
     disc_model.assign_new_batch_size(sess,len(train_inputs))
     fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
     state = sess.run(disc_model._initial_state)
@@ -137,9 +157,9 @@ def main(_):
     # translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
     # for t in translated:
     #     print t
-    disc_pre_train()
+    #disc_pre_train()
     # gen_pre_train()
-    #al_train()
+    al_train()
 
 if __name__ == "__main__":
   tf.app.run()

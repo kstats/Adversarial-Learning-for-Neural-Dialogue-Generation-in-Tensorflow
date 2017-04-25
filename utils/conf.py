@@ -1,20 +1,20 @@
 __author__ = 'MORAN01'
 import os
 class disc_config(object):
-    batch_size = 5
+    batch_size = 128
     lr = 0.1
     lr_decay = 0.6
-    vocabulary_size = 20000
+    vocabulary_size = 25000
     embed_dim = 128
-    hidden_neural_size = 200
-    hidden_layer_num = 3
+    hidden_neural_size = 512
+    hidden_layer_num = 1
     train_dir = 'data/subj0.pkl'
     max_len = 40
     valid_num = 100
     checkpoint_num = 1000
     init_scale = 0.1
     class_num = 2
-    keep_prob = 0.5
+    keep_prob = 0.8
     num_epoch = 60
     max_decay_epoch = 30
     max_grad_norm = 5
@@ -29,7 +29,7 @@ class gen_config(object):
     batch_size = 1
     size = 12
     num_layers = 2
-    vocab_size = 10000
+    vocab_size = 25000
     data_dir = "data/"
     train_dir = "data/"
     max_train_data_size = 0

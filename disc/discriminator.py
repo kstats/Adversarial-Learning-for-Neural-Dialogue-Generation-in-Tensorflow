@@ -30,18 +30,29 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
     total_num=len(data[0])
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
 
-         fetches = model.correct_num
-         feed_dict={}
-         feed_dict[model.input_data]=x
-         feed_dict[model.target]=y
-         feed_dict[model.mask_x]=mask_x
-         model.assign_new_batch_size(session,len(x[0]))
-         state = session.run(model._initial_state)
-         for i , (c,h) in enumerate(model._initial_state):
-            feed_dict[c]=state[i].c
-            feed_dict[h]=state[i].h
-         count=session.run(fetches,feed_dict)
-         correct_num+=count
+        fetches = model.correct_num
+        feed_dict={}
+        
+         # feed_dict[model.input_data]=x
+         # feed_dict[model.target]=y
+         # feed_dict[model.mask_x]=mask_x
+         # model.assign_new_batch_size(session,len(x[0]))
+
+        feed_dict[model.context]=x[:,0,:]
+        feed_dict[model.response] = x[:,1,:]
+        feed_dict[model.target]=y
+
+        feed_dict[model.mask_c]=mask_x[:,:,0]
+        feed_dict[model.mask_r]=mask_x[:,:,1]
+        model.assign_new_batch_size(session,len(x))
+
+        # state = session.run(model._initial_state)
+        # for i , (c,h) in enumerate(model._initial_state):
+        #     feed_dict[c]=state[i].c
+        #     feed_dict[h]=state[i].h
+        # import pdb; pdb.set_trace()
+        count=session.run(fetches,feed_dict)
+        correct_num+=count
 
     accuracy=float(correct_num)/total_num
     dev_summary = tf.summary.scalar('dev_accuracy',accuracy)
@@ -55,24 +66,23 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
         #import pdb; pdb.set_trace()
         feed_dict={}
-        print(np.shape(x))
-        import pdb; pdb.set_trace()
 
         feed_dict[model.context]=x[:,0,:]
         feed_dict[model.response] = x[:,1,:]
         feed_dict[model.target]=y
 
-        feed_dict[model.mask_x]=mask_x[:,:,0]
-        model.assign_new_batch_size(session,len(x[0]))
+        feed_dict[model.mask_c]=mask_x[:,:,0]
+        feed_dict[model.mask_r]=mask_x[:,:,1]
+        model.assign_new_batch_size(session,len(x))
         fetches = [model.cost,model.accuracy,model.train_op,model.summary]
-        #state = session.run(model._initial_state)
+        # state = session.run(model._initial_state)
         #for i , (c,h) in enumerate(model._initial_state):
          #   feed_dict[c]=state[i].c
           #  feed_dict[h]=state[i].h
         cost,accuracy,_,summary = session.run(fetches,feed_dict)
         train_summary_writer.add_summary(summary,global_steps)
         train_summary_writer.flush()
-        valid_accuracy=evaluate(valid_model,session,valid_data,global_steps,valid_summary_writer)
+        valid_accuracy=evaluate(valid_model,session,valid_data,batch_size,global_steps,valid_summary_writer)
         if(global_steps%100==0):
             print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
         global_steps+=1
@@ -87,7 +97,6 @@ def train_step(config_disc, config_evl):
     eval_config.keep_prob=1.0
 
     train_data,valid_data,test_data=data_helper.load_data(True, config.max_len,batch_size=config.batch_size)
-    import pdb; pdb.set_trace()
     print("begin training")
 
     # gpu_config=tf.ConfigProto()

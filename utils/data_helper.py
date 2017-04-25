@@ -16,13 +16,13 @@ def set_dataset_path(path):
 
 
 
-def load_data(debug, max_len,batch_size,n_words=20000,valid_portion=0.1,sort_by_len=True):
+def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_len=True):
     f=open(dataset_path,'rb')
     print ('load data from %s',dataset_path)
     #train_set = np.array(pkl.load(f))
     #test_set = np.array(pkl.load(f))
     #TODO change this to be dynamic
-    train_set, test_set = du.create_disc_context_data("data/chitchat.train", 20000)
+    train_set, test_set = du.create_disc_context_data("data/training200k.txt", n_words)
     print("train_set: ", np.shape(train_set))
     print("test_set: ", np.shape(test_set))
     f.close()

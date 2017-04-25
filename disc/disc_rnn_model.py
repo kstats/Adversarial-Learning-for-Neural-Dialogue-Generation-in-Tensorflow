@@ -148,7 +148,7 @@ class disc_rnn_model(object):
             if not is_training:
                 return
 
-            self.globle_step = tf.Variable(0,name="globle_step",trainable=False)
+            self.global_step = tf.Variable(0,name="global_step",trainable=False)
             self.lr = tf.Variable(0.0,trainable=False)
 
             tvars = tf.trainable_variables()
@@ -175,7 +175,7 @@ class disc_rnn_model(object):
 
             optimizer = tf.train.GradientDescentOptimizer(self.lr)
             # optimizer.apply_gradients(zip(grads, tvars))
-            self.train_op=optimizer.apply_gradients(zip(grads, tvars))
+            self.train_op=optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
 
             self.new_lr = tf.placeholder(tf.float32,shape=[],name="new_learning_rate")
             self._lr_update = tf.assign(self.lr,self.new_lr)

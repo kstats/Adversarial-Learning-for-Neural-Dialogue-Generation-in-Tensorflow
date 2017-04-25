@@ -10,18 +10,37 @@ import sys
 sys.path.append('../utils')
 import pdb
 
+
+def optimistic_restore(session, save_file):
+    reader = tf.train.NewCheckpointReader(save_file)
+    saved_shapes = reader.get_variable_to_shape_map()
+    var_names = sorted([(var.name, var.name.split(':')[0]) for var in tf.global_variables() if var.name.split(':')[0] in saved_shapes])
+    restore_vars = []
+    name2var = dict(zip(map(lambda x:x.name.split(':')[0], tf.global_variables()), tf.global_variables()))
+    with tf.variable_scope('', reuse=True):
+        for var_name, saved_var_name in var_names:
+            curr_var = name2var[saved_var_name]
+            var_shape = curr_var.get_shape().as_list()
+            if var_shape == saved_shapes[saved_var_name]:
+                restore_vars.append(curr_var)                
+    saver = tf.train.Saver(restore_vars)
+    saver.restore(session, save_file)
+
+
 def create_model(session, config, is_training):
     """Create translation model and initialize or load parameters in session."""
-    model = disc_rnn_model.disc_rnn_model(config=config,is_training=True)
+    model = disc_rnn_model.disc_rnn_model(config=config,is_training=is_training)
 
     checkpoint_dir = os.path.abspath(os.path.join(config.out_dir, "checkpoints"))
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-    if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
+    if is_training and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
-        model.saver.restore(session, ckpt.model_checkpoint_path)
+        model.saver.restore(session, ckpt.model_checkpoint_path)        
+        # optimistic_restore(session, ckpt.model_checkpoint_path)
     else:
         print("Created Disc_RNN model with fresh parameters.")
-        session.run(tf.global_variables_initializer())
+        if is_training:
+            session.run(tf.global_variables_initializer())
     return model
 
 
@@ -98,9 +117,9 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         valid_accuracy=evaluate(valid_model,session,valid_data,batch_size,global_steps,valid_summary_writer)
         if(global_steps%10==0):
             print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
-            # import pdb; pdb.set_trace()
-        if(global_steps%150==0):
-            path = model.saver.save(session,checkpoint_prefix,global_steps)
+        if(global_steps%10==0):
+        # if(global_steps%150==0):
+            path = model.saver.save(session,checkpoint_prefix,global_step=model.global_step)
             print("Saved model chechpoint to{}\n".format(path))
         global_steps+=1
 
@@ -124,7 +143,6 @@ def train_step(config_disc, config_evl):
         with tf.variable_scope("model",reuse=None,initializer=initializer):
             #model = disc_rnn_model.disc_rnn_model(config=config,is_training=True)
             model = create_model(session, config, is_training=True)
-
         with tf.variable_scope("model",reuse=True,initializer=initializer):
             #valid_model = disc_rnn_model.disc_rnn_model(config=eval_config,is_training=False)
             #test_model = disc_rnn_model.disc_rnn_model(config=eval_config,is_training=False)
@@ -145,10 +163,7 @@ def train_step(config_disc, config_evl):
         checkpoint_prefix = os.path.join(checkpoint_dir, "disc.model")
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-        #saver = tf.train.Saver(tf.all_variables())
-
-
-        tf.global_variables_initializer().run()
+        
         global_steps=1
         begin_time=int(time.time())
 
@@ -161,7 +176,7 @@ def train_step(config_disc, config_evl):
                                    valid_data, config_disc.batch_size, checkpoint_prefix, train_summary_writer,dev_summary_writer)
 
             if i% config.checkpoint_every==0:
-                path = model.saver.save(session,checkpoint_prefix,global_steps)
+                path = model.saver.save(session,checkpoint_prefix,global_step=model.global_step)
                 print("Saved model chechpoint to{}\n".format(path))
 
         print("the train is finished")

@@ -35,12 +35,12 @@ def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_
 
     #train_set length
     n_samples= len(train_set[0])
-    print (n_samples)
+    #print (n_samples)
     #shuffle and generate train and valid dataset
     sidx = np.random.permutation(n_samples)
-    if debug: print("sidx: ", sidx)
+    #if debug: print("sidx: ", sidx)
     n_train = int(np.round(n_samples * (1. - valid_portion)))
-    if debug: print("n_train: ", n_train)
+    #if debug: print("n_train: ", n_train)
 
     tset1 = [train_set[0][s] for s in sidx[:n_train]]
     tset2 = [train_set[1][s] for s in sidx[:n_train]]
@@ -57,16 +57,16 @@ def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_
     '''train_set_x = [[train_set_x[0][s], train_set_x[1][s]] for s in sidx[:n_train]]
     train_set_y = [train_set_y[s] for s in sidx[:n_train]]'''
 
-    if debug: print("train_set_x[0]: ", train_set_x[0])
-    if debug: print("train_set_y[0]: ", train_set_y[0])
+    #if debug: print("train_set_x[0]: ", train_set_x[0])
+    #if debug: print("train_set_y[0]: ", train_set_y[0])
 
-    if debug: print("train_set_x[1]: ", train_set_x[1])
-    if debug: print("train_set_y[1]: ", train_set_y[1])
+    #if debug: print("train_set_x[1]: ", train_set_x[1])
+    #if debug: print("train_set_y[1]: ", train_set_y[1])
 
     train_set = (train_set_x, train_set_y)
     valid_set = (valid_set_x, valid_set_y)
-    if debug: print("train_set shape: ", np.shape(train_set))
-    if debug: print("valid_set shape: ", np.shape(valid_set))
+    #if debug: print("train_set shape: ", np.shape(train_set))
+    #if debug: print("valid_set shape: ", np.shape(valid_set))
 
     #remove unknow words
     def remove_unk(x):

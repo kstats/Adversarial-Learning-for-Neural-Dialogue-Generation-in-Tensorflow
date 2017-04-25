@@ -98,15 +98,15 @@ class disc_rnn_model(object):
 
             with tf.variable_scope("Combine_LSTM"):
                 input = tf.concat(1, [out_put1, out_put2])
-                lstm_w = tf.get_variable("lstm_w", [input.get_shape()[1], hidden_neural_size], dtype=tf.float32)
-                lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32)
-                out_put = tf.nn.relu(tf.matmul(input,lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
+                self.lstm_w = tf.get_variable("lstm_w", [input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                out_put = tf.nn.relu(tf.matmul(input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
                 #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
                 
 
             with tf.name_scope("Softmax_layer_and_output"):
-                softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,class_num],dtype=tf.float32)
-                softmax_b = tf.get_variable("softmax_b",[class_num],dtype=tf.float32)
+                softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,class_num],dtype=tf.float32, initializer=tf.random_normal_initializer())
+                softmax_b = tf.get_variable("softmax_b",[class_num],dtype=tf.float32, initializer=tf.random_normal_initializer())
                 self.logits = tf.matmul(out_put,softmax_w)+softmax_b
 
             with tf.name_scope("loss"):

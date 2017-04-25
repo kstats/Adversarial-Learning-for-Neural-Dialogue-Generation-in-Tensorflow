@@ -34,11 +34,11 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     train_set_x = [sample_inputs[i] for i in sorted_index]
     train_set_y = [sample_labels[i] for i in sorted_index]
     train_set=(train_set_x,train_set_y)
-    new_train_set_x=np.zeros([len(train_set[0]),disc_config.max_len])
+    new_train_set_x=np.zeros([len(train_set[0]),2, disc_config.max_len])
     #print("new_train_set: ", np.shape(new_train_set_x))
     new_train_set_y=np.zeros(len(train_set[0]))
     #print("new_train_set_y: ", np.shape(new_train_set_y))
-    mask_train_x=np.zeros([disc_config.max_len,len(train_set[0])])
+    mask_train_x=np.zeros([disc_config.max_len,len(train_set[0]), 2])
 
     def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x, responses):
         #import pdb; pdb.set_trace()

@@ -29,7 +29,7 @@ from tensorflow.python.platform import gfile
 import tensorflow as tf
 import numpy as np
 import pickle
-
+import random
 # Special vocabulary symbols - we always put them at the start.
 _PAD = b"_PAD"
 _GO = b"_GO"
@@ -357,13 +357,15 @@ def fake_sentence(vocabulary_size):
       break
   return rc[:12-np.random.randint(6)]
 
-def fake_sentence_and_context(vocabulary_size):
+def fake_sentence_and_context(vocabulary_size, data):
   rc = [[],[]]
-  for i in range(12):
-    rc[0].append(np.random.randint(vocabulary_size))
-    rc[1].append(np.random.randint(vocabulary_size))
-    if np.random.rand() < 0.1 and i>1:
-      break
+  rand1 = 0
+  rand2 = 0
+  while rand1 == rand2:
+    rand1 = random.randint(0,vocabulary_size)
+    rand2 = random.randint(0,vocabulary_size)
+  rc[0] = data[0][rand1]
+  rc[1] = data[1][rand2]
   return rc
 
 def decode_sentence(sent,vocab, reverse):
@@ -394,14 +396,14 @@ def create_disc_context_data(fname, vocabulary_size):
   n = len(lines[0])
   l = int(0.9*n)
   tset = [lines[0][:l], lines[1][:l], [0] * l] #+ [[fake_sentence_and_context(vocabulary_size) for _ in range(l)]]
-  fake = [fake_sentence_and_context(vocabulary_size) for _ in range(l)]
+  fake = [fake_sentence_and_context(vocabulary_size, tset) for _ in range(l)]
   #import pdb; pdb.set_trace()
   for f in range(np.shape(fake)[0]):
     tset[0].append(fake[f][0])
     tset[1].append(fake[f][1])
   #tset[1] = tset[1] + fake[:][1]
   vset = [lines[0][l:], lines[1][l:], [0] * (n-l)]# + [[fake_sentence_and_context(vocabulary_size) for _ in range(n-l)]]
-  fake = [fake_sentence_and_context(vocabulary_size) for _ in range(n-l)]
+  fake = [fake_sentence_and_context(vocabulary_size, tset) for _ in range(n-l)]
   for f in range(np.shape(fake)[0]):
     vset[0].append(fake[f][0])
     vset[1].append(fake[f][1])

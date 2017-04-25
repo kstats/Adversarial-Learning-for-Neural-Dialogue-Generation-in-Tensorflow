@@ -362,8 +362,8 @@ def fake_sentence_and_context(vocabulary_size, data):
   rand1 = 0
   rand2 = 0
   while rand1 == rand2:
-    rand1 = random.randint(0,vocabulary_size)
-    rand2 = random.randint(0,vocabulary_size)
+    rand1 = random.randint(0,vocabulary_size-1)
+    rand2 = random.randint(0,vocabulary_size-1)
   rc[0] = data[0][rand1]
   rc[1] = data[1][rand2]
   return rc
@@ -396,14 +396,14 @@ def create_disc_context_data(fname, vocabulary_size):
   n = len(lines[0])
   l = int(0.9*n)
   tset = [lines[0][:l], lines[1][:l], [0] * l] #+ [[fake_sentence_and_context(vocabulary_size) for _ in range(l)]]
-  fake = [fake_sentence_and_context(vocabulary_size, tset) for _ in range(l)]
+  fake = [fake_sentence_and_context(l, tset) for _ in range(l)]
   #import pdb; pdb.set_trace()
   for f in range(np.shape(fake)[0]):
     tset[0].append(fake[f][0])
     tset[1].append(fake[f][1])
   #tset[1] = tset[1] + fake[:][1]
   vset = [lines[0][l:], lines[1][l:], [0] * (n-l)]# + [[fake_sentence_and_context(vocabulary_size) for _ in range(n-l)]]
-  fake = [fake_sentence_and_context(vocabulary_size, tset) for _ in range(n-l)]
+  fake = [fake_sentence_and_context(n - l, vset) for _ in range(n-l)]
   for f in range(np.shape(fake)[0]):
     vset[0].append(fake[f][0])
     vset[1].append(fake[f][1])

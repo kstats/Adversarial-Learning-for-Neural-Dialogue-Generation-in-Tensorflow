@@ -74,16 +74,21 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         feed_dict[model.mask_c]=mask_x[:,:,0]
         feed_dict[model.mask_r]=mask_x[:,:,1]
         model.assign_new_batch_size(session,len(x))
-        fetches = [model.cost,model.accuracy,model.train_op,model.summary, model.prediction, model.logits, model.lstm_w]
+        fetches = [model.cost,model.accuracy,model.train_op,model.summary, model.prediction, model.logits, model.lstm_w, model.grads]
         # state = session.run(model._initial_state)
         #for i , (c,h) in enumerate(model._initial_state):
          #   feed_dict[c]=state[i].c
           #  feed_dict[h]=state[i].h
-        cost,accuracy,_,summary, pred, logits, w  = session.run(fetches,feed_dict)
+        cost,accuracy,_,summary, pred, logits, w, grads  = session.run(fetches,feed_dict)
         print (y)
         print (pred)
         print(logits)
         print(w)
+        # print 'Printing grads!!\n\n\n'
+        # print(grads)
+
+        # import pdb; pdb.set_trace()
+
         #print (logits)
         #print (tf.argmax(logits,1))
 

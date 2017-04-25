@@ -81,26 +81,47 @@ class disc_rnn_model(object):
             with tf.name_scope("mean_pooling_layer"):
 
                 out_put=tf.reduce_sum(out_put,0)/(tf.reduce_sum(self.mask_x,0)[:,None])'''
+
+
+            def extract_axis_1(data, ind):
+                """
+                Get specified elements along the first axis of tensor.
+                :param data: Tensorflow tensor that will be subsetted.
+                :param ind: Indices to take (one for each element along axis 0 of data).
+                :return: Subsetted tensor.
+                """
+
+                batch_range = tf.range(tf.shape(data)[0])
+                # import pdb; pdb.set_trace()
+                indices = tf.stack([batch_range, ind], axis=1)
+                res = tf.gather_nd(data, indices)
+
+                return res
+
+            self.mask_c_len = tf.count_nonzero(self.mask_c, 0, dtype=tf.int32)
+            self.mask_r_len = tf.count_nonzero(self.mask_r, 0, dtype=tf.int32)
             with tf.variable_scope("LSTM_layer_context"):
-                self.out_put1_test, state = tf.nn.dynamic_rnn(cell, context_inputs, sequence_length = tf.count_nonzero(self.mask_c, 0), \
+                self.out_put1_test, state = tf.nn.dynamic_rnn(cell, context_inputs, sequence_length = self.mask_c_len, \
                 initial_state = self._initial_state)
                 self.out_put1 = self.out_put1_test[:,-1,:]
-                out_put1 = self.out_put1
+                self.output1 = extract_axis_1(self.out_put1_test,self.mask_c_len-1)
+                out_put1 = self.output1
                 #out_put = tf.pack(outputs)
                 #outputs = tf.transpose(outputs, [1, 0, 2])
             #with tf.name_scope("mean_pooling_layer"):
 
-             #   out_put = tf.reduce_sum(out_put, 0) #/ (tf.reduce_sum(self.mask_x, 0)[:, None])
+             #   out_put = tf.reduce_sum(out_put, 0) #/ (tf.reduce_sum(self.mask_x, 0)[:, None])             
             with tf.variable_scope("LSTM_layer_response"):
-                self.out_put2_test, state = tf.nn.dynamic_rnn(cell2, response_inputs, tf.count_nonzero(self.mask_r, 0), initial_state = self._initial_state)
+                self.out_put2_test, state = tf.nn.dynamic_rnn(cell2, response_inputs, sequence_length = self.mask_r_len, initial_state = self._initial_state)
                 self.out_put2 = self.out_put2_test[:,-1,:]
-                out_put2 = self.out_put2
+                self.output2 = extract_axis_1(self.out_put2_test,self.mask_r_len-1)
+                out_put2 = self.output2
 
             with tf.variable_scope("Combine_LSTM"):
-                input = tf.concat(1, [out_put1, out_put2])
-                self.lstm_w = tf.get_variable("lstm_w", [input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                cat_input = tf.concat(1, [out_put1, out_put2])
+                self.lstm_w = tf.get_variable("lstm_w", [cat_input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
                 lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
-                out_put = tf.nn.relu(tf.matmul(input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
+                out_put = tf.nn.relu(tf.matmul(cat_input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
                 #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
                 
 
@@ -131,8 +152,11 @@ class disc_rnn_model(object):
             self.lr = tf.Variable(0.0,trainable=False)
 
             tvars = tf.trainable_variables()
+            self.tvars = tvars
             grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars),
                                           config.max_grad_norm)
+
+            self.grads = grads
 
 
             # Keep track of gradient values and sparsity (optional)
@@ -150,7 +174,7 @@ class disc_rnn_model(object):
 
 
             optimizer = tf.train.GradientDescentOptimizer(self.lr)
-            optimizer.apply_gradients(zip(grads, tvars))
+            # optimizer.apply_gradients(zip(grads, tvars))
             self.train_op=optimizer.apply_gradients(zip(grads, tvars))
 
             self.new_lr = tf.placeholder(tf.float32,shape=[],name="new_learning_rate")

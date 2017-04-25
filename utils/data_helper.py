@@ -8,6 +8,7 @@ import cPickle as pkl
 import data_utils as du
 
 #file path
+# dataset_path='data/training30k.txt.query.pkl'
 dataset_path='data/subj0.pkl'
 
 def set_dataset_path(path):
@@ -155,6 +156,7 @@ def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_
     test_set=padding_and_generate_mask(test_set[0],test_set[1],new_test_set_x,new_test_set_y,mask_test_x)
     valid_set=padding_and_generate_mask(valid_set[0],valid_set[1],new_valid_set_x,new_valid_set_y,mask_valid_x)
 
+    import pdb; pdb.set_trace()
     return train_set,valid_set,test_set
 
 

@@ -64,10 +64,12 @@ def create_model(session, gen_config, forward_only):
     return model
 
 def prepare_data(gen_config):
-    train_path = os.path.join(gen_config.data_dir, "chitchat.train")
+    # train_path = os.path.join(gen_config.data_dir, "chitchat.train")
+    train_path = os.path.join(gen_config.data_dir, "training30k.txt")
     voc_file_path = [train_path+".answer", train_path+".query"]
-    vocab_path = os.path.join(gen_config.data_dir, "vocab%d.all" % gen_config.vocab_size)
-    data_utils.create_vocabulary(vocab_path, voc_file_path, gen_config.vocab_size)
+    vocab_path = './data/movie_25000'
+    # vocab_path = os.path.join(gen_config.data_dir, "vocab%d.all" % gen_config.vocab_size)
+    # data_utils.create_vocabulary(vocab_path, voc_file_path, gen_config.vocab_size)
     vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
     print("Preparing Chitchat data in %s" % gen_config.data_dir)
@@ -93,13 +95,14 @@ def train(gen_config):
     with tf.Session() as sess:
     #with tf.device("/gpu:1"):
         # Create model.
-        print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        model = create_model(sess, gen_config,False)
-
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
+        # import pdb; pdb.set_trace()
+        print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
+        model = create_model(sess, gen_config,False)
+
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0
@@ -140,7 +143,7 @@ def train(gen_config):
                 # Print statistics for the previous epoch.
                 perplexity = math.exp(loss) if loss < 300 else float('inf')
                 print ("global step %d learning rate %.4f step-time %.2f perplexity "
-                       "%.2f" % (model.global_step.eval(), model.learning_rate.eval(),
+                       "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
                 if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):

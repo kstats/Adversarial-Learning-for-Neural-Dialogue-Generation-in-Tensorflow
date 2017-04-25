@@ -269,9 +269,11 @@ def prepare_chitchat_data(data_dir, vocabulary, vocabulary_size, tokenizer=None)
   """
   # Get wmt data to the specified directory.
   #train_path = get_wmt_enfr_train_set(data_dir)
-  train_path = os.path.join(data_dir, "chitchat.train")
+  # train_path = os.path.join(data_dir, "chitchat.train")
+  train_path = os.path.join(data_dir, "training200k.txt")
   #dev_path = get_wmt_enfr_dev_set(data_dir)
-  dev_path = os.path.join(data_dir, "chitchat.dev")
+  # dev_path = os.path.join(data_dir, "chitchat.dev")
+  dev_path = os.path.join(data_dir, "dev100k.txt")
   # fixed_path = os.path.join(data_dir, "chitchat.fixed")
   # weibo_path = os.path.join(data_dir, "chitchat.weibo")
   # qa_path = os.path.join(data_dir, "chitchat.qa")
@@ -291,14 +293,14 @@ def prepare_chitchat_data(data_dir, vocabulary, vocabulary_size, tokenizer=None)
   # Create token ids for the training data.
   answer_train_ids_path = train_path + (".ids%d.answer" % vocabulary_size)
   query_train_ids_path = train_path + (".ids%d.query" % vocabulary_size)
-  data_to_token_ids(train_path + ".answer", answer_train_ids_path, vocabulary, tokenizer)
-  data_to_token_ids(train_path + ".query", query_train_ids_path, vocabulary, tokenizer)
+  data_to_token_ids(train_path + ".answer.decoded", answer_train_ids_path, vocabulary, tokenizer)
+  data_to_token_ids(train_path + ".query.decoded", query_train_ids_path, vocabulary, tokenizer)
 
   # Create token ids for the development data.
   answer_dev_ids_path = dev_path + (".ids%d.answer" % vocabulary_size)
   query_dev_ids_path = dev_path + (".ids%d.query" % vocabulary_size)
-  data_to_token_ids(dev_path + ".answer", answer_dev_ids_path, vocabulary, tokenizer)
-  data_to_token_ids(dev_path + ".query", query_dev_ids_path, vocabulary, tokenizer)
+  data_to_token_ids(dev_path + ".answer.decoded", answer_dev_ids_path, vocabulary, tokenizer)
+  data_to_token_ids(dev_path + ".query.decoded", query_dev_ids_path, vocabulary, tokenizer)
 
   return (query_train_ids_path, answer_train_ids_path,
           query_dev_ids_path, answer_dev_ids_path)
@@ -370,6 +372,14 @@ def fake_sentence_and_context(vocabulary_size, data):
 
 def decode_sentence(sent,vocab, reverse):
   return ' '.join(map(lambda x: reverse[int(x)-1],sent))
+
+def decode_file(fname):
+  v, r = initialize_vocabulary("./data/movie_25000")
+  with open(fname,'r') as f:
+    lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
+  with open(fname+'.decoded','w+') as f:
+    f.writelines([decode_sentence(x,v,r)+'\n' for x in lines])
+
 
 def create_disc_pretrain_data(fname, vocabulary_size):
   with open(fname,'r') as f:

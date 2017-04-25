@@ -15,7 +15,7 @@ def create_model(session, config, is_training):
     model = disc_rnn_model.disc_rnn_model(config=config,is_training=True)
 
     checkpoint_dir = os.path.abspath(os.path.join(config.out_dir, "checkpoints"))
-    ckpt = tf.train.get_checkpoint_state(checkpoint_dirk)
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
         model.saver.restore(session, ckpt.model_checkpoint_path)

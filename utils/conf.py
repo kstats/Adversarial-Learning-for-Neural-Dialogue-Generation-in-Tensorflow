@@ -8,7 +8,7 @@ class disc_config(object):
     embed_dim = 128
     hidden_neural_size = 512
     hidden_layer_num = 1
-    train_dir = 'data/subj0.pkl'
+    train_dir = 'data/training30k.txt.query.pkl'
     max_len = 40
     valid_num = 100
     checkpoint_num = 1000
@@ -27,7 +27,7 @@ class gen_config(object):
     learning_rate_decay_factor = 0.99
     max_gradient_norm = 5.0
     batch_size = 1
-    size = 12
+    size = 256
     num_layers = 2
     vocab_size = 25000
     data_dir = "data/"

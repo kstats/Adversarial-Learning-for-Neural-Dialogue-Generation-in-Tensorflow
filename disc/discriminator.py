@@ -83,7 +83,7 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         train_summary_writer.add_summary(summary,global_steps)
         train_summary_writer.flush()
         valid_accuracy=evaluate(valid_model,session,valid_data,batch_size,global_steps,valid_summary_writer)
-        if(global_steps%100==0):
+        if(global_steps%10==0):
             print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
         global_steps+=1
 

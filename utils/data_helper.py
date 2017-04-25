@@ -41,11 +41,16 @@ def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_
     if debug: print("sidx: ", sidx)
     n_train = int(np.round(n_samples * (1. - valid_portion)))
     if debug: print("n_train: ", n_train)
-    train_set_x = [train_set[0][:n_train], train_set[1][:n_train]]
-    train_set_y = train_set[2][:n_train]
 
-    valid_set_x = [train_set[0][n_train:], train_set[1][n_train:]]
-    valid_set_y = train_set[2][n_train:]
+    tset1 = [train_set[0][s] for s in sidx[:n_train]]
+    tset2 = [train_set[1][s] for s in sidx[:n_train]]
+    train_set_x = [tset1, tset2]
+    train_set_y = [train_set[2][s] for s in sidx[:n_train]]
+
+    vset1 = [train_set[0][s] for s in sidx[n_train:]]
+    vset2 = [train_set[1][s] for s in sidx[n_train:]]
+    valid_set_x = [vset1, vset2]
+    valid_set_y = [train_set[2][s] for s in sidx[n_train:]]
 
     #valid_set_x = [[train_set_x[0][s], train_set_x[1][s]] for s in sidx[n_train:]]
     #valid_set_y = [train_set_y[s] for s in sidx[n_train:]]

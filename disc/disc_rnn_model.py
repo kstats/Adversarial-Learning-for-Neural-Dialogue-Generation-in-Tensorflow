@@ -63,9 +63,9 @@ class disc_rnn_model(object):
               #  response_inputs=tf.nn.embedding_lookup(embedding_response,self.response) #[batch_size, max_len, embed_dim]
 
             #TODO how should I handle both dropouts?
-            # if self.keep_prob<1:
-            #     context_inputs = tf.nn.dropout(context_inputs,self.keep_prob)
-            #     response_inputs = tf.nn.dropout(response_inputs,self.keep_prob)
+            if self.keep_prob<1:
+                context_inputs = tf.nn.dropout(context_inputs,self.keep_prob)
+                response_inputs = tf.nn.dropout(response_inputs,self.keep_prob)
 
             '''out_put=[]
             state=self._initial_state

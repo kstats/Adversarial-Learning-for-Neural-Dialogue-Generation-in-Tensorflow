@@ -14,7 +14,8 @@ def create_model(session, config, is_training):
     """Create translation model and initialize or load parameters in session."""
     model = disc_rnn_model.disc_rnn_model(config=config,is_training=True)
 
-    ckpt = tf.train.get_checkpoint_state(config.train_dir)
+    checkpoint_dir = os.path.abspath(os.path.join(config.out_dir, "checkpoints"))
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dirk)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
         model.saver.restore(session, ckpt.model_checkpoint_path)
@@ -62,7 +63,7 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
         summary_writer.flush()
     return accuracy
 
-def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, train_summary_writer, valid_summary_writer=None):
+def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, checkpoint_prefix, train_summary_writer, valid_summary_writer=None):
     for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
         #import pdb; pdb.set_trace()
         feed_dict={}
@@ -80,10 +81,10 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
          #   feed_dict[c]=state[i].c
           #  feed_dict[h]=state[i].h
         cost,accuracy,_,summary, pred, logits, w, grads  = session.run(fetches,feed_dict)
-        print (y)
-        print (pred)
-        print(logits)
-        print(w)
+        # print (y)
+        # print (pred)
+        # print(logits)        
+        # print(w)
         # print 'Printing grads!!\n\n\n'
         # print(grads)
 
@@ -97,6 +98,10 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         valid_accuracy=evaluate(valid_model,session,valid_data,batch_size,global_steps,valid_summary_writer)
         if(global_steps%10==0):
             print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
+            # import pdb; pdb.set_trace()
+        if(global_steps%150==0):
+            path = model.saver.save(session,checkpoint_prefix,global_steps)
+            print("Saved model chechpoint to{}\n".format(path))
         global_steps+=1
 
     return global_steps
@@ -153,7 +158,7 @@ def train_step(config_disc, config_evl):
             lr_decay = config.lr_decay ** max(i-config.max_decay_epoch,0.0)
             model.assign_new_lr(session,config.lr*lr_decay)
             global_steps=run_epoch(model,session,train_data,global_steps,valid_model,
-                                   valid_data, config_disc.batch_size, train_summary_writer,dev_summary_writer)
+                                   valid_data, config_disc.batch_size, checkpoint_prefix, train_summary_writer,dev_summary_writer)
 
             if i% config.checkpoint_every==0:
                 path = model.saver.save(session,checkpoint_prefix,global_steps)

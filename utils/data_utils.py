@@ -482,14 +482,3 @@ def convert_to_format(dataset):
     return ( np.stack([dataset['context'], dataset['response']], axis = 1), 
                 dataset['label'], 
                 np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))
-
-
-
-
-
-
-
-
-
-
-

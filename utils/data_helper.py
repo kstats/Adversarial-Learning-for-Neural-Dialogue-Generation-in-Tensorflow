@@ -95,5 +95,3 @@ def batch_iter(data,batch_size):
         #     import sys
         #     sys.exit(0)
         yield (return_x,return_y,return_mask_x)
-
-

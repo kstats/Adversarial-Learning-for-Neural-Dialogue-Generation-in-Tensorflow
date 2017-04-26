@@ -38,5 +38,3 @@ class gen_config(object):
     max_train_data_size         = 0
     steps_per_checkpoint        = 200
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
-
-

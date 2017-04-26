@@ -15,67 +15,32 @@ def set_dataset_path(path):
     dataset_path=path
 
 
-
-
-def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_len=True):
-    f=open(dataset_path,'rb')
-    print ('load data from %s',dataset_path)
-    #train_set = np.array(pkl.load(f))
-    #test_set = np.array(pkl.load(f))
+def load_data(max_len, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
+ 
     #TODO change this to be dynamic
-    train_set, test_set = du.create_disc_context_data("data/training200k.txt", n_words)
-    print("train_set: ", np.shape(train_set))
-    print("test_set: ", np.shape(test_set))
-    f.close()
-
-
-    # w_f = open("corpus", "w")
-    # for x, y in zip(train_set_x, train_set_y):
-    #     w_f.write(str(x) + "\t" + str(y) + "\n")
-    # w_f.close()
-
-    #train_set length
-    n_samples= len(train_set[0])
-    #print (n_samples)
+    dataset                     = du.create_dataset("data/training200k.txt") 
+    tarin_dataset, test_set     = du.split_dataset(dataset)
+    
     #shuffle and generate train and valid dataset
-    sidx = np.random.permutation(n_samples)
-    #if debug: print("sidx: ", sidx)
-    n_train = int(np.round(n_samples * (1. - valid_portion)))
-    #if debug: print("n_train: ", n_train)
+    shuffled_tarin_dataset      = du.shuffle_dataset(tarin_dataset)
+    train_set, valid_set        = du.split_dataset(shuffled_tarin_dataset, 1 - valid_portion)
 
-    tset1 = [train_set[0][s] for s in sidx[:n_train]]
-    tset2 = [train_set[1][s] for s in sidx[:n_train]]
-    train_set_x = [tset1, tset2]
-    train_set_y = [train_set[2][s] for s in sidx[:n_train]]
 
-    vset1 = [train_set[0][s] for s in sidx[n_train:]]
-    vset2 = [train_set[1][s] for s in sidx[n_train:]]
-    valid_set_x = [vset1, vset2]
-    valid_set_y = [train_set[2][s] for s in sidx[n_train:]]
+    train_set = du.convert_to_format(du.dataset_padding(train_set, max_len))
 
-    #valid_set_x = [[train_set_x[0][s], train_set_x[1][s]] for s in sidx[n_train:]]
-    #valid_set_y = [train_set_y[s] for s in sidx[n_train:]]
-    '''train_set_x = [[train_set_x[0][s], train_set_x[1][s]] for s in sidx[:n_train]]
-    train_set_y = [train_set_y[s] for s in sidx[:n_train]]'''
+    valid_set = du.convert_to_format(du.dataset_padding(valid_set, max_len))
 
-    #if debug: print("train_set_x[0]: ", train_set_x[0])
-    #if debug: print("train_set_y[0]: ", train_set_y[0])
+    test_set = du.convert_to_format(du.dataset_padding(test_set, max_len))
 
-    #if debug: print("train_set_x[1]: ", train_set_x[1])
-    #if debug: print("train_set_y[1]: ", train_set_y[1])
 
-    train_set = (train_set_x, train_set_y)
-    valid_set = (valid_set_x, valid_set_y)
-    #if debug: print("train_set shape: ", np.shape(train_set))
-    #if debug: print("valid_set shape: ", np.shape(valid_set))
+   # import pdb; pdb.set_trace()
+    
 
     #remove unknow words
     def remove_unk(x):
         return [[1 if w >= n_words else w for w in sen] for sen in x]
 
-    test_set_x = [test_set[0], test_set[1]]
-    test_set_y = test_set[2]
-    '''valid_set_x = [valid_set[0], valid_set[1]]
+        '''valid_set_x = [valid_set[0], valid_set[1]]
     valid_set_y = [valid_set[2]]
     train_set_x = [train_set[0], train_set[1]]
     train_set_y = train_set[2]'''
@@ -103,59 +68,7 @@ def load_data(debug, max_len,batch_size,n_words=25000,valid_portion=0.1,sort_by_
         train_set_x = [train_set_x[i] for i in sorted_index]
         train_set_y = [train_set_y[i] for i in sorted_index]'''
 
-    train_set=(train_set_x,train_set_y)
-    valid_set=(valid_set_x,valid_set_y)
-    test_set=(test_set_x,test_set_y)
-
-
-    #import pdb; pdb.set_trace()
-
-    new_train_set_x=np.zeros([len(train_set[0][0]),2, max_len])
-    if debug: print("new_train_set: ", np.shape(new_train_set_x))
-    new_train_set_y=np.zeros(len(train_set[0][0]))
-    if debug: print("new_train_set_y: ", np.shape(new_train_set_y))
-
-    new_valid_set_x=np.zeros([len(valid_set[0][0]),2, max_len])
-    new_valid_set_y=np.zeros(len(valid_set[0][0]))
-
-    new_test_set_x=np.zeros([len(test_set[0][0]),2, max_len])
-    new_test_set_y=np.zeros(len(test_set[0][0]))
-
-    mask_train_x=np.zeros([max_len,len(train_set[0][0]), 2])
-    mask_test_x=np.zeros([max_len,len(test_set[0][0]), 2])
-    mask_valid_x=np.zeros([max_len,len(valid_set[0][0]), 2])
-
-
-    def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x):
-        #import pdb; pdb.set_trace()
-        for i,(x,y) in enumerate(zip(x1[0],y1)):
-            #whether to remove sentences with length larger than maxlen
-            if len(x)<=max_len:
-                new_x[i,0,0:len(x)]=x
-                new_mask_x[0:len(x),i,0]=1
-                new_y[i]=y
-            else:
-                new_x[i][0]=(x[0:max_len])
-                new_mask_x[:,i,0]=1
-                new_y[i]=y
-        for i,(x,y) in enumerate(zip(x1[1],y1)):
-            #whether to remove sentences with length larger than maxlen
-            if len(x)<=max_len:
-                new_x[i,1,0:len(x)]=x
-                new_mask_x[0:len(x),i,1]=1
-                new_y[i]=y
-            else:
-                new_x[i][1]=(x[0:max_len])
-                new_mask_x[:,i,1]=1
-                new_y[i]=y
-        new_set =(new_x,new_y,new_mask_x)
-        del new_x,new_y
-        return new_set
-    train_set=padding_and_generate_mask(train_set[0],train_set[1],new_train_set_x,new_train_set_y,mask_train_x)
-
-    test_set=padding_and_generate_mask(test_set[0],test_set[1],new_test_set_x,new_test_set_y,mask_test_x)
-    valid_set=padding_and_generate_mask(valid_set[0],valid_set[1],new_valid_set_x,new_valid_set_y,mask_valid_x)
-
+  
     return train_set,valid_set,test_set
 
 

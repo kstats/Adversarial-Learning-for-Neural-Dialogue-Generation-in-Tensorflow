@@ -449,6 +449,43 @@ def gen_dataset_w_false_ex(dataset):
       
     return mixed_dataset
 
+def _padding(data, max_len):
+    # Get lengths of each row of data
+    lens        = np.array([len(i) for i in data])
+
+    # Mask of valid places in each row 
+    valid       = np.arange(np.append(lens,max_len).max()) < lens[:,None]
+
+    # Setup output array and put elements from data into masked positions
+    out         = np.zeros(valid.shape ) #TODO dtype
+    out[valid]  = np.concatenate(data)
+    out         = np.delete(out, np.s_[max_len:], axis=1)
+
+    mask        = np.zeros(valid.shape)
+    mask[valid] = 1
+    mask        = np.delete(mask, np.s_[max_len:], axis=1)
+
+    return out, mask
+
+
+def dataset_padding(dataset, max_len):
+
+    dataset['context'], c_mask   = _padding(dataset['context'], max_len)
+    dataset['response'], r_mask  = _padding(dataset['response'], max_len)
+
+    dataset['c_mask'], dataset['r_mask'] = np.transpose(c_mask), np.transpose(r_mask)
+
+    return dataset
+
+def convert_to_format(dataset):
+    
+    return ( np.stack([dataset['context'], dataset['response']], axis = 1), 
+                dataset['label'], 
+                np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))
+
+
+
+
 
 
 

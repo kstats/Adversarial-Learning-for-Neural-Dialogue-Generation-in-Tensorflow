@@ -116,9 +116,8 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         train_summary_writer.flush()
         valid_accuracy=evaluate(valid_model,session,valid_data,batch_size,global_steps,valid_summary_writer)
         if(global_steps%10==0):
-            print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
-        if(global_steps%10==0):
-        # if(global_steps%150==0):
+            print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(model.global_step.eval(),cost,accuracy,valid_accuracy))
+        if(global_steps%200==0):
             path = model.saver.save(session,checkpoint_prefix,global_step=model.global_step)
             print("Saved model chechpoint to{}\n".format(path))
         global_steps+=1

@@ -26,26 +26,20 @@ sys.path.append('../utils')
 # See seq2seq_model.Seq2SeqModel for details of how they work.
 _buckets = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
 
-def read_data(source_path, target_path, max_size=None):
-  data_set = [[] for _ in _buckets]
-  with gfile.GFile(source_path, mode="r") as source_file:
-    with gfile.GFile(target_path, mode="r") as target_file:
-      source, target = source_file.readline(), target_file.readline()
-      counter = 0
-      while source and target and (not max_size or counter < max_size):
-        counter += 1
-        if counter % 100000 == 0:
-          print("  reading data line %d" % counter)
-          sys.stdout.flush()
-        source_ids = [int(x) for x in source.split()]
-        target_ids = [int(x) for x in target.split()]
+def read_data(dataset, max_size=None):
+    data_set = [[] for _ in _buckets]
+    for i in range(dataset['len']):
+        if (max_size and i > max_size):
+            break
+        source_ids = dataset['context'][i]
+        target_ids = dataset['response'][i]
         target_ids.append(data_utils.EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets): #[bucket_id, (source_size, target_size)]
-          if len(source_ids) < source_size and len(target_ids) < target_size:
-            data_set[bucket_id].append([source_ids, target_ids])
-            break
-        source, target = source_file.readline(), target_file.readline()
-  return data_set
+            if len(source_ids) < source_size and len(target_ids) < target_size:
+                data_set[bucket_id].append([source_ids, target_ids])
+                break
+    return data_set
+
 
 def create_model(session, gen_config, forward_only):
     """Create translation model and initialize or load parameters in session."""

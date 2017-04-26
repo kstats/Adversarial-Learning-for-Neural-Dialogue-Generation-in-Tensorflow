@@ -394,6 +394,21 @@ def create_disc_pretrain_data(fname, vocabulary_size):
     pickle.dump((tset,tlabels),f)
     pickle.dump((vset,vlabels),f)
   return tset, vset
+def shuffle_dataset(dataset):
+
+    shuffled_dataset = dataset.copy()
+
+    n_samples = dataset['len']
+    
+    sidx = np.random.permutation(n_samples)
+
+    shuffled_dataset['context']  = [dataset['context'][s] for s in sidx]
+    shuffled_dataset['response'] = [dataset['response'][s] for s in sidx]
+    if dataset['is_disc']:
+        shuffled_dataset['label'] = [dataset['label'][s] for s in sidx]
+
+    return shuffled_dataset
+
 
 
 def split_dataset(dataset, ratio = 0.9):

@@ -24,7 +24,8 @@ sys.path.append('../utils')
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
-_buckets = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
+_buckets = conf.gen_config.buckets
+
 
 def read_data(dataset, max_size=None):
     data_set = [[] for _ in _buckets]
@@ -34,11 +35,25 @@ def read_data(dataset, max_size=None):
         source_ids = dataset['context'][i]
         target_ids = dataset['response'][i]
         target_ids.append(data_utils.EOS_ID)
-        for bucket_id, (source_size, target_size) in enumerate(_buckets): #[bucket_id, (source_size, target_size)]
+        for bucket_id, (source_size, target_size) in enumerate(_buckets): 
             if len(source_ids) < source_size and len(target_ids) < target_size:
                 data_set[bucket_id].append([source_ids, target_ids])
                 break
     return data_set
+
+def prepare_data(gen_config):
+    
+    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
+    vocab, rev_vocab            = data_utils.initialize_vocabulary(gen_config.vocab_path)
+
+    dataset                     = data_utils.create_dataset(train_path, is_disc = False)
+    train_dataset, dev_dataset  = data_utils.split_dataset(dataset, ratio = gen_config.train_ratio )
+
+    # Read data into buckets and compute their sizes.
+    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
+    train_set, dev_set = read_data(train_dataset, gen_config.max_train_data_size), read_data(dev_dataset)
+
+    return vocab, rev_vocab, dev_set, train_set
 
 
 def create_model(session, gen_config, forward_only):
@@ -57,43 +72,20 @@ def create_model(session, gen_config, forward_only):
         session.run(tf.global_variables_initializer())
     return model
 
-def prepare_data(gen_config):
-    
-    train_path = os.path.join(gen_config.data_dir, "training30k.txt")
-    vocab_path = './data/movie_25000'
-    # vocab_path = os.path.join(gen_config.data_dir, "vocab%d.all" % gen_config.vocab_size)
-    # data_utils.create_vocabulary(vocab_path, voc_file_path, gen_config.vocab_size)
-    vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
-
-    dataset = data_utils.create_dataset(train_path, is_disc = False)
-    train_dataset, dev_dataset  = data_utils.split_dataset(dataset, ratio=0.6)
-
-    # Read data into buckets and compute their sizes.
-    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
-    dev_set     = read_data(dev_dataset)
-    train_set   = read_data(train_dataset, gen_config.max_train_data_size)
-
-    return vocab, rev_vocab, dev_set, train_set
-
-def softmax(x):
-    prob = np.exp(x) / np.sum(np.exp(x), axis=0)
-    return prob
 
 def train(gen_config):
     """Train a en->fr translation model using WMT data."""
     vocab, rev_vocab, dev_set, train_set = prepare_data(gen_config)
 
     with tf.Session() as sess:
-    #with tf.device("/gpu:1"):
         # Create model.
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
-        # import pdb; pdb.set_trace()
+        
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        model = create_model(sess, gen_config,False)
-
+        model = create_model(sess, gen_config, False)
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0
@@ -101,7 +93,6 @@ def train(gen_config):
         previous_losses = []
 
         step_loss_summary = tf.Summary()
-        #merge = tf.merge_all_summaries()
         writer = tf.summary.FileWriter("../logs/", sess.graph)
 
         while True:
@@ -154,8 +145,14 @@ def train(gen_config):
                 #   print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
                 sys.stdout.flush()
 
+
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
                            beam_size, buckets, mc_search=True,debug=False):
+    
+    def softmax(x):
+        prob = np.exp(x) / np.sum(np.exp(x), axis=0)
+        return prob
+
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
         #model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True)
       _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, True)
@@ -259,4 +256,3 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
             sample_labels.append(0)
 
     return sample_inputs, sample_labels, rep
-    pass

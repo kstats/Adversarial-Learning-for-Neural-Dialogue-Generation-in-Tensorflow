@@ -22,23 +22,27 @@ def gen_pre_train():
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_search=False):
-    sample_inputs, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
+    sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                source_inputs, source_outputs, mc_search=mc_search)
-    print("disc_train_data, mc_search: ", mc_search)
-    for input, label in zip(sample_inputs, sample_labels):
-        print(str(label) + "\t" + str(input))
+    #print("disc_train_data, mc_search: ", mc_search)
+    #for input, label in zip(sample_inputs, sample_labels):
+     #   print(str(label) + "\t" + str(input))
 
+    sample_inputs = zip(sample_context, sample_response)
     def len_argsort(seq):
         return sorted(range(len(seq)), key=lambda x: len(seq[x]))
     sorted_index = len_argsort(sample_inputs)
-    train_set_x = [sample_inputs[i] for i in sorted_index]
+    train_set_x = []
+    train_set_y = []
+    train_set_x = [sample_context[i] for i in sorted_index]
     train_set_y = [sample_labels[i] for i in sorted_index]
     train_set=(train_set_x,train_set_y)
-    new_train_set_x=np.zeros([len(train_set[0]),disc_config.max_len])
+    #import pdb; pdb.set_trace()
+    new_train_set_x=np.zeros([len(train_set[0]),2, disc_config.max_len])
     #print("new_train_set: ", np.shape(new_train_set_x))
     new_train_set_y=np.zeros(len(train_set[0]))
     #print("new_train_set_y: ", np.shape(new_train_set_y))
-    mask_train_x=np.zeros([disc_config.max_len,len(train_set[0])])
+    mask_train_x=np.zeros([disc_config.max_len,len(train_set[0]), 2])
 
     def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x, responses):
         #import pdb; pdb.set_trace()
@@ -63,6 +67,10 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
                 new_x[i][1]=(x[0:max_len])
                 new_mask_x[:,i,1]=1
                 new_y[i]=y
+        for j in range(np.shape(new_mask_x)[1]):
+            for i in range(np.shape(new_mask_x)[2]):
+                if new_mask_x[0][j][i] == 0:
+                    new_mask_x[0][j][i] = 1
         new_set =(new_x,new_y,new_mask_x)
         del new_x,new_y
         return new_set
@@ -84,13 +92,14 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
 
     feed_dict[disc_model.mask_c] = train_masks[:, :, 0]
     feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
+    #import pdb; pdb.set_trace()
 
     disc_model.assign_new_batch_size(sess,len(train_inputs))
     fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
-    state = sess.run(disc_model._initial_state)
-    for i , (c,h) in enumerate(disc_model._initial_state):
-        feed_dict[c]=state[i].c
-        feed_dict[h]=state[i].h
+    #state = sess.run(disc_model._initial_state)
+    #for i , (c,h) in enumerate(disc_model._initial_state):
+     #   feed_dict[c]=state[i].c
+      #  feed_dict[h]=state[i].h
     cost,accuracy,_,summary = sess.run(fetches,feed_dict)
     print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
     return accuracy
@@ -118,6 +127,8 @@ def al_train():
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
                                                         source_inputs,source_outputs,mc_search=False)
+            #import pdb;pdb.set_trace()
+
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 

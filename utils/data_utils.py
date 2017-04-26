@@ -248,94 +248,73 @@ def data_to_token_ids(data_path, target_path, vocabulary,
           tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
 
 
-def prepare_chitchat_data(data_dir, vocabulary, vocabulary_size, tokenizer=None):
-  """Get WMT data into data_dir, create vocabularies and tokenize data.
+#def prepare_chitchat_data(data_dir, vocabulary, vocabulary_size, tokenizer=None):
+#  """Get WMT data into data_dir, create vocabularies and tokenize data.
+#
+#  Args:
+#    data_dir: directory in which the data sets will be stored.
+#    en_vocabulary_size: size of the English vocabulary to create and use.
+#    fr_vocabulary_size: size of the French vocabulary to create and use.
+#    tokenizer: a function to use to tokenize each data sentence;
+#      if None, basic_tokenizer will be used.
+#
+#  Returns:
+#    A tuple of 6 elements:
+#      (1) path to the token-ids for English training data-set,
+#      (2) path to the token-ids for French training data-set,
+#      (3) path to the token-ids for English development data-set,
+#      (4) path to the token-ids for French development data-set,
+#      (5) path to the English vocabulary file,
+#      (6) path to the French vocabulary file.
+#  """
+#  train_path = os.path.join(data_dir, "training200k.txt")
+#  dev_path = os.path.join(data_dir, "dev100k.txt")
+#
+#  # Create token ids for the training data.
+#  answer_train_ids_path = train_path + (".ids%d.answer" % vocabulary_size)
+#  query_train_ids_path = train_path + (".ids%d.query" % vocabulary_size)
+#  data_to_token_ids(train_path + ".answer.decoded", answer_train_ids_path, vocabulary, tokenizer)
+#  data_to_token_ids(train_path + ".query.decoded", query_train_ids_path, vocabulary, tokenizer)
+#
+#  # Create token ids for the development data.
+#  answer_dev_ids_path = dev_path + (".ids%d.answer" % vocabulary_size)
+#  query_dev_ids_path = dev_path + (".ids%d.query" % vocabulary_size)
+#  data_to_token_ids(dev_path + ".answer.decoded", answer_dev_ids_path, vocabulary, tokenizer)
+#  data_to_token_ids(dev_path + ".query.decoded", query_dev_ids_path, vocabulary, tokenizer)
+#
+#  return (query_train_ids_path, answer_train_ids_path, query_dev_ids_path, answer_dev_ids_path)
 
-  Args:
-    data_dir: directory in which the data sets will be stored.
-    en_vocabulary_size: size of the English vocabulary to create and use.
-    fr_vocabulary_size: size of the French vocabulary to create and use.
-    tokenizer: a function to use to tokenize each data sentence;
-      if None, basic_tokenizer will be used.
+#def prepare_defined_data(data_path, vocabulary, vocabulary_size, tokenizer=None):
+#  #vocab_path = os.path.join(data_dir, "vocab%d.all" %vocabulary_size)
+#  #query_vocab_path = os.path.join(data_dir, "vocab%d.query" %query_vocabulary_size)
+#
+#  answer_fixed_ids_path = data_path + (".ids%d.answer" % vocabulary_size)
+#  query_fixed_ids_path = data_path + (".ids%d.query" % vocabulary_size)
+#
+#  data_to_token_ids(data_path + ".answer", answer_fixed_ids_path, vocabulary, tokenizer)
+#  data_to_token_ids(data_path + ".query", query_fixed_ids_path, vocabulary, tokenizer)
+#  return (query_fixed_ids_path, answer_fixed_ids_path)
 
-  Returns:
-    A tuple of 6 elements:
-      (1) path to the token-ids for English training data-set,
-      (2) path to the token-ids for French training data-set,
-      (3) path to the token-ids for English development data-set,
-      (4) path to the token-ids for French development data-set,
-      (5) path to the English vocabulary file,
-      (6) path to the French vocabulary file.
-  """
-  # Get wmt data to the specified directory.
-  #train_path = get_wmt_enfr_train_set(data_dir)
-  # train_path = os.path.join(data_dir, "chitchat.train")
-  train_path = os.path.join(data_dir, "training200k.txt")
-  #dev_path = get_wmt_enfr_dev_set(data_dir)
-  # dev_path = os.path.join(data_dir, "chitchat.dev")
-  dev_path = os.path.join(data_dir, "dev100k.txt")
-  # fixed_path = os.path.join(data_dir, "chitchat.fixed")
-  # weibo_path = os.path.join(data_dir, "chitchat.weibo")
-  # qa_path = os.path.join(data_dir, "chitchat.qa")
+#def get_dummy_set(dummy_path, vocabulary, vocabulary_size, tokenizer=None):
+#    dummy_ids_path = dummy_path + (".ids%d" % vocabulary_size)
+#    data_to_token_ids(dummy_path, dummy_ids_path, vocabulary, tokenizer)
+#    dummy_set = []
+#    with gfile.GFile(dummy_ids_path, "r") as dummy_file:
+#        line = dummy_file.readline()
+#        counter = 0
+#        while line:
+#            counter += 1
+#            dummy_set.append([int(x) for x in line.split()])
+#            line = dummy_file.readline()
+#    return dummy_set
 
-  # voc_file_path = [train_path+".answer", fixed_path+".answer", weibo_path+".answer", qa_path+".answer",
-  #                    train_path+".query", fixed_path+".query", weibo_path+".query", qa_path+".query"]
-  #voc_query_path = [train_path+".query", fixed_path+".query", weibo_path+".query", qa_path+".query"]
-  # Create vocabularies of the appropriate sizes.
-  #vocab_path = os.path.join(data_dir, "vocab%d.all" % vocabulary_size)
-  #query_vocab_path = os.path.join(data_dir, "vocab%d.query" % en_vocabulary_size)
-
-  #create_vocabulary(vocab_path, voc_file_path, vocabulary_size)
-
-
-  #create_vocabulary(query_vocab_path, voc_query_path, en_vocabulary_size)
-
-  # Create token ids for the training data.
-  answer_train_ids_path = train_path + (".ids%d.answer" % vocabulary_size)
-  query_train_ids_path = train_path + (".ids%d.query" % vocabulary_size)
-  data_to_token_ids(train_path + ".answer.decoded", answer_train_ids_path, vocabulary, tokenizer)
-  data_to_token_ids(train_path + ".query.decoded", query_train_ids_path, vocabulary, tokenizer)
-
-  # Create token ids for the development data.
-  answer_dev_ids_path = dev_path + (".ids%d.answer" % vocabulary_size)
-  query_dev_ids_path = dev_path + (".ids%d.query" % vocabulary_size)
-  data_to_token_ids(dev_path + ".answer.decoded", answer_dev_ids_path, vocabulary, tokenizer)
-  data_to_token_ids(dev_path + ".query.decoded", query_dev_ids_path, vocabulary, tokenizer)
-
-  return (query_train_ids_path, answer_train_ids_path,
-          query_dev_ids_path, answer_dev_ids_path)
-
-def prepare_defined_data(data_path, vocabulary, vocabulary_size, tokenizer=None):
-  #vocab_path = os.path.join(data_dir, "vocab%d.all" %vocabulary_size)
-  #query_vocab_path = os.path.join(data_dir, "vocab%d.query" %query_vocabulary_size)
-
-  answer_fixed_ids_path = data_path + (".ids%d.answer" % vocabulary_size)
-  query_fixed_ids_path = data_path + (".ids%d.query" % vocabulary_size)
-
-  data_to_token_ids(data_path + ".answer", answer_fixed_ids_path, vocabulary, tokenizer)
-  data_to_token_ids(data_path + ".query", query_fixed_ids_path, vocabulary, tokenizer)
-  return (query_fixed_ids_path, answer_fixed_ids_path)
-
-def get_dummy_set(dummy_path, vocabulary, vocabulary_size, tokenizer=None):
-    dummy_ids_path = dummy_path + (".ids%d" % vocabulary_size)
-    data_to_token_ids(dummy_path, dummy_ids_path, vocabulary, tokenizer)
-    dummy_set = []
-    with gfile.GFile(dummy_ids_path, "r") as dummy_file:
-        line = dummy_file.readline()
-        counter = 0
-        while line:
-            counter += 1
-            dummy_set.append([int(x) for x in line.split()])
-            line = dummy_file.readline()
-    return dummy_set
-
-def split_into_files(data_path, fname):
-  with open(data_path+fname,'r') as f:
-    lines = np.asarray([x.strip().split('|') for x in f.readlines()])
-    with open(data_path+fname+'.query','w+') as f1:
-      f1.write('\n'.join(lines[:,0]))
-    with open(data_path+fname+'.answer','w+') as f2:
-      f2.write('\n'.join(lines[:,1]))
+#def split_into_files(data_path, fname):
+#  with open(data_path+fname,'r') as f:
+#    lines = np.asarray([x.strip().split('|') for x in f.readlines()])
+#    with open(data_path+fname+'.query','w+') as f1:
+#      f1.write('\n'.join(lines[:,0]))
+#    with open(data_path+fname+'.answer','w+') as f2:
+#      f2.write('\n'.join(lines[:,1]))
 
 def translate(data_path):
   vocab, reverse = initialize_vocabulary("./data/movie_25000")
@@ -351,81 +330,41 @@ def translate(data_path):
       #import pdb; pdb.set_trace()
   return sentences
 
-def fake_sentence(vocabulary_size):
-  rc = []
-  for i in range(12):
-    rc.append(np.random.randint(vocabulary_size))
-    if np.random.rand() < 0.1 and i>1:
-      break
-  return rc[:12-np.random.randint(6)]
 
-def fake_sentence_and_context(vocabulary_size, data):
-  rc = [[],[]]
-  rand1 = 0
-  rand2 = 0
-  while rand1 == rand2:
-    rand1 = random.randint(0,vocabulary_size-1)
-    rand2 = random.randint(0,vocabulary_size-1)
-  rc[0] = data[0][rand1]
-  rc[1] = data[1][rand2]
-  return rc
-
-def decode_sentence(sent,vocab, reverse):
-  return ' '.join(map(lambda x: reverse[int(x)-1],sent))
-
-def decode_file(fname):
-  v, r = initialize_vocabulary("./data/movie_25000")
-  with open(fname,'r') as f:
-    lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
-  with open(fname+'.decoded','w+') as f:
-    f.writelines([decode_sentence(x,v,r)+'\n' for x in lines])
+#def decode_file(fname):
+#    
+#    def decode_sentence(sent,vocab, reverse):
+#        return ' '.join(map(lambda x: reverse[int(x)-1],sent))
+#
+#    v, r = initialize_vocabulary("./data/movie_25000")
+#    with open(fname,'r') as f:
+#        lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
+#    with open(fname+'.decoded','w+') as f:
+#        f.writelines([decode_sentence(x,v,r)+'\n' for x in lines])
 
 
-def create_disc_pretrain_data(fname, vocabulary_size):
-  with open(fname,'r') as f:
-    lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
-  n = len(lines)
-  l = int(0.9*n)
-  tset = lines[:l] + [fake_sentence(vocabulary_size) for _ in range(l)]
-  vset = lines[l:] + [fake_sentence(vocabulary_size) for _ in range(n-l)]
-  tlabels = [1]*l + [0]*l
-  vlabels = [1]*(n-l) + [0]*(n-l)
-  with open(fname+'.pkl','w+') as f:
-    pickle.dump((tset,tlabels),f)
-    pickle.dump((vset,vlabels),f)
-  return tset, vset
-def shuffle_dataset(dataset):
-
-    shuffled_dataset = dataset.copy()
-
-    n_samples = dataset['len']
-    
-    sidx = np.random.permutation(n_samples)
-
-    shuffled_dataset['context']  = [dataset['context'][s] for s in sidx]
-    shuffled_dataset['response'] = [dataset['response'][s] for s in sidx]
-    if dataset['is_disc']:
-        shuffled_dataset['label'] = [dataset['label'][s] for s in sidx]
-
-    return shuffled_dataset
-
-
-
-def split_dataset(dataset, ratio = 0.9):
-    
-    n_set = int (ratio * dataset['len'] )
-
-    set1, set2 = {}, {}
-
-    set1['context'],  set2['context']   = dataset['context'][:n_set],  dataset['context'][n_set:]
-    set1['response'], set2['response']  = dataset['response'][:n_set], dataset['response'][n_set:]
-    if dataset['is_disc']:
-        set1['label'], set2['label'] = dataset['label'][:n_set], dataset['label'][n_set:]
-    set1['is_disc'],  set2['is_disc'] = dataset['is_disc'], dataset['is_disc']
-    set1['len'], set2['len'] = n_set, dataset['len'] - n_set
-
-    return set1, set2
-
+#def create_disc_pretrain_data(fname, vocabulary_size):
+#    
+#    def fake_sentence(vocabulary_size):
+#        rc = []
+#        for i in range(12):
+#            rc.append(np.random.randint(vocabulary_size))
+#            if np.random.rand() < 0.1 and i>1:
+#                break
+#        return rc[:12-np.random.randint(6)]
+#
+#  with open(fname,'r') as f:
+#    lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
+#  n = len(lines)
+#  l = int(0.9*n)
+#  tset = lines[:l] + [fake_sentence(vocabulary_size) for _ in range(l)]
+#  vset = lines[l:] + [fake_sentence(vocabulary_size) for _ in range(n-l)]
+#  tlabels = [1]*l + [0]*l
+#  vlabels = [1]*(n-l) + [0]*(n-l)
+#  with open(fname+'.pkl','w+') as f:
+#    pickle.dump((tset,tlabels),f)
+#    pickle.dump((vset,vlabels),f)
+#  return tset, vset
 
 
 def create_dataset(fname, is_disc=True):
@@ -443,6 +382,38 @@ def create_dataset(fname, is_disc=True):
     dataset['is_disc']      = is_disc
 
     return dataset
+
+
+def shuffle_dataset(dataset):
+
+    shuffled_dataset = dataset.copy()
+
+    n_samples = dataset['len']
+    
+    sidx = np.random.permutation(n_samples)
+
+    shuffled_dataset['context']  = [dataset['context'][s] for s in sidx]
+    shuffled_dataset['response'] = [dataset['response'][s] for s in sidx]
+    if dataset['is_disc']:
+        shuffled_dataset['label'] = [dataset['label'][s] for s in sidx]
+
+    return shuffled_dataset
+
+
+def split_dataset(dataset, ratio = 0.9):
+    
+    n_set = int (ratio * dataset['len'] )
+
+    set1, set2 = {}, {}
+
+    set1['context'],  set2['context']   = dataset['context'][:n_set],  dataset['context'][n_set:]
+    set1['response'], set2['response']  = dataset['response'][:n_set], dataset['response'][n_set:]
+    if dataset['is_disc']:
+        set1['label'], set2['label'] = dataset['label'][:n_set], dataset['label'][n_set:]
+    set1['is_disc'],  set2['is_disc'] = dataset['is_disc'], dataset['is_disc']
+    set1['len'], set2['len'] = n_set, dataset['len'] - n_set
+
+    return set1, set2
 
 
 def gen_dataset_w_false_ex(dataset):

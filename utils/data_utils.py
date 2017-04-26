@@ -457,7 +457,8 @@ def _padding(data, max_len):
     valid       = np.arange(np.append(lens,max_len).max()) < lens[:,None]
 
     # Setup output array and put elements from data into masked positions
-    out         = np.zeros(valid.shape ) #TODO dtype
+    out         = np.empty(valid.shape, dtype = np.int32)
+    out         = out.fill(PAD_ID)
     out[valid]  = np.concatenate(data)
     out         = np.delete(out, np.s_[max_len:], axis=1)
 

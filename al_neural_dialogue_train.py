@@ -37,7 +37,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     train_set_x = [sample_context[i] for i in sorted_index]
     train_set_y = [sample_labels[i] for i in sorted_index]
     train_set=(train_set_x,train_set_y)
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     new_train_set_x=np.zeros([len(train_set[0]),2, disc_config.max_len])
     #print("new_train_set: ", np.shape(new_train_set_x))
     new_train_set_y=np.zeros(len(train_set[0]))
@@ -92,7 +92,7 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
 
     feed_dict[disc_model.mask_c] = train_masks[:, :, 0]
     feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
 
     disc_model.assign_new_batch_size(sess,len(train_inputs))
     fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
@@ -127,7 +127,7 @@ def al_train():
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
                                                         source_inputs,source_outputs,mc_search=False)
-            import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
 
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)

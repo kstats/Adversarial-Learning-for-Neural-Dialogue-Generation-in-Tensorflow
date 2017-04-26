@@ -242,13 +242,14 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     return res_cands
 
 def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc_search=True):
-
-    sample_inputs = []
+    sample_context = []
+    sample_response = []
     sample_labels =[]
     rep = []
 
     for source_query, source_answer in zip(source_inputs, source_outputs):
-        sample_inputs.append(source_query+source_answer)
+        sample_context.append(source_query)
+        sample_response.append(source_answer)
         sample_labels.append(1)
         responses = get_predicted_sentence(sess, source_query, vocab,
                                            model, gen_config.beam_size, _buckets, mc_search)
@@ -263,9 +264,9 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
                 rep.append(dec_inp)
                 dec_inp = dec_inp[1:]
             print("  (%s) -> %s" % (resp['prob'], dec_inp))
-            sample_neg = source_query + dec_inp
-            sample_inputs.append(sample_neg)
+            sample_context.append(source_query)
+            sample_response.append(dec_inp)
             sample_labels.append(0)
 
-    return sample_inputs, sample_labels, rep
+    return sample_context, sample_response, sample_labels, rep
     pass

@@ -58,23 +58,20 @@ def create_model(session, gen_config, forward_only):
     return model
 
 def prepare_data(gen_config):
-    # train_path = os.path.join(gen_config.data_dir, "chitchat.train")
+    
     train_path = os.path.join(gen_config.data_dir, "training30k.txt")
-    voc_file_path = [train_path+".answer", train_path+".query"]
     vocab_path = './data/movie_25000'
     # vocab_path = os.path.join(gen_config.data_dir, "vocab%d.all" % gen_config.vocab_size)
     # data_utils.create_vocabulary(vocab_path, voc_file_path, gen_config.vocab_size)
     vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
-    print("Preparing Chitchat data in %s" % gen_config.data_dir)
-    train_query, train_answer, dev_query, dev_answer = data_utils.prepare_chitchat_data(
-        gen_config.data_dir, vocab, gen_config.vocab_size)
+    dataset = data_utils.create_dataset(train_path, is_disc = False)
+    train_dataset, dev_dataset  = data_utils.split_dataset(dataset, ratio=0.6)
 
     # Read data into buckets and compute their sizes.
-    print ("Reading development and training data (limit: %d)."
-               % gen_config.max_train_data_size)
-    dev_set = read_data(dev_query, dev_answer)
-    train_set = read_data(train_query, train_answer, gen_config.max_train_data_size)
+    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
+    dev_set     = read_data(dev_dataset)
+    train_set   = read_data(train_dataset, gen_config.max_train_data_size)
 
     return vocab, rev_vocab, dev_set, train_set
 

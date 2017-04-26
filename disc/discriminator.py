@@ -4,11 +4,10 @@ import os
 import time
 import datetime
 import disc_rnn_model as disc_rnn_model
-import utils.data_helper as data_helper
+import utils.data_utils as data_utils
 import utils.conf as conf
 import sys
 sys.path.append('../utils')
-import pdb
 
 
 def optimistic_restore(session, save_file):
@@ -48,15 +47,11 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
 
     correct_num=0
     total_num=len(data[0])
-    for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
+    for step, (x,y,mask_x) in enumerate(data_utils.batch_iter(data,batch_size=batch_size)):
 
         fetches = model.correct_num
         feed_dict={}
         
-         # feed_dict[model.input_data]=x
-         # feed_dict[model.target]=y
-         # feed_dict[model.mask_x]=mask_x
-         # model.assign_new_batch_size(session,len(x[0]))
 
         feed_dict[model.context]=x[:,0,:]
         feed_dict[model.response] = x[:,1,:]
@@ -66,11 +61,6 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
         feed_dict[model.mask_r]=mask_x[:,:,1]
         model.assign_new_batch_size(session,len(x))
 
-        # state = session.run(model._initial_state)
-        # for i , (c,h) in enumerate(model._initial_state):
-        #     feed_dict[c]=state[i].c
-        #     feed_dict[h]=state[i].h
-        # import pdb; pdb.set_trace()
         count=session.run(fetches,feed_dict)
         correct_num+=count
 
@@ -83,8 +73,7 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
     return accuracy
 
 def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, checkpoint_prefix, train_summary_writer, valid_summary_writer=None):
-    for step, (x,y,mask_x) in enumerate(data_helper.batch_iter(data,batch_size=batch_size)):
-        #import pdb; pdb.set_trace()
+    for step, (x,y,mask_x) in enumerate(data_utils.batch_iter(data,batch_size=batch_size)):
         feed_dict={}
 
         feed_dict[model.context]=x[:,0,:]
@@ -95,22 +84,7 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         feed_dict[model.mask_r]=mask_x[:,:,1]
         model.assign_new_batch_size(session,len(x))
         fetches = [model.cost,model.accuracy,model.train_op,model.summary, model.prediction, model.logits, model.lstm_w, model.grads]
-        # state = session.run(model._initial_state)
-        #for i , (c,h) in enumerate(model._initial_state):
-         #   feed_dict[c]=state[i].c
-          #  feed_dict[h]=state[i].h
         cost,accuracy,_,summary, pred, logits, w, grads  = session.run(fetches,feed_dict)
-        # print (y)
-        # print (pred)
-        # print(logits)        
-        # print(w)
-        # print 'Printing grads!!\n\n\n'
-        # print(grads)
-
-        # import pdb; pdb.set_trace()
-
-        #print (logits)
-        #print (tf.argmax(logits,1))
 
         train_summary_writer.add_summary(summary,global_steps)
         train_summary_writer.flush()
@@ -118,7 +92,6 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         if(global_steps%10==0):
             print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(global_steps,cost,accuracy,valid_accuracy))
         if(global_steps%10==0):
-        # if(global_steps%150==0):
             path = model.saver.save(session,checkpoint_prefix,global_step=model.global_step)
             print("Saved model chechpoint to{}\n".format(path))
         global_steps+=1
@@ -132,25 +105,19 @@ def train_step(config_disc, config_evl):
     eval_config=config_evl
     eval_config.keep_prob=1.0
 
-    train_data,valid_data,test_data=data_helper.load_data(debug = True, max_len = config.max_len)
+    train_data,valid_data,test_data=data_utils.load_data(debug = True, max_len = config.max_len)
     print("begin training")
 
-    # gpu_config=tf.ConfigProto()
-    # gpu_config.gpu_options.allow_growth=True
     with tf.Graph().as_default(), tf.Session() as session:
         print("model training")
         initializer = tf.random_uniform_initializer(-1*config.init_scale,1*config.init_scale)
         with tf.variable_scope("model",reuse=None,initializer=initializer):
-            #model = disc_rnn_model.disc_rnn_model(config=config,is_training=True)
             model = create_model(session, config, is_training=True)
         with tf.variable_scope("model",reuse=True,initializer=initializer):
-            #valid_model = disc_rnn_model.disc_rnn_model(config=eval_config,is_training=False)
-            #test_model = disc_rnn_model.disc_rnn_model(config=eval_config,is_training=False)
             valid_model = create_model(session, eval_config, is_training=False)
             test_model = create_model(session, eval_config, is_training=False)
 
         #add summary
-        # train_summary_op = tf.merge_summary([model.loss_summary,model.accuracy])
         train_summary_dir = os.path.join(config.out_dir,"summaries","train")
         train_summary_writer =  tf.summary.FileWriter(train_summary_dir,session.graph)
 
@@ -168,7 +135,6 @@ def train_step(config_disc, config_evl):
         begin_time=int(time.time())
 
         for i in range(config.num_epoch):
-            #import pdb; pdb.set_trace()
             print("the %d epoch training..."%(i+1))
             lr_decay = config.lr_decay ** max(i-config.max_decay_epoch,0.0)
             model.assign_new_lr(session,config.lr*lr_decay)

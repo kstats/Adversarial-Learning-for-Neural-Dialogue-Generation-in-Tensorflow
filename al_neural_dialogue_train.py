@@ -108,7 +108,9 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
 def al_train():
     gen_config.batch_size = 1
     with tf.Session() as sess:
-        disc_model = discs.create_model(sess, disc_config, is_training=True)
+        initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
+        with tf.variable_scope("model",reuse=None,initializer=initializer):
+            disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config, forward_only=True)
         vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]

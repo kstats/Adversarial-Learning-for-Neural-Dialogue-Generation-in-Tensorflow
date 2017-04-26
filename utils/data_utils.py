@@ -396,39 +396,72 @@ def create_disc_pretrain_data(fname, vocabulary_size):
   return tset, vset
 
 
-def create_disc_context_data(fname, vocabulary_size):
-  with open(fname,'r') as f:
-    parts = [x.strip().split('|') for x in f.readlines()]
-    context = [map(int,x[0].split(" ")) for x in parts]
-    response = [map(int,x[1].split(" ")) for x in parts]
-    lines = [context, response]
-  print(np.shape(lines))
-  n = len(lines[0])
-  l = int(0.9*n)
-  tset = [lines[0][:l], lines[1][:l], [0] * l] #+ [[fake_sentence_and_context(vocabulary_size) for _ in range(l)]]
-  fake = [fake_sentence_and_context(l, tset) for _ in range(l)]
-  #import pdb; pdb.set_trace()
-  for f in range(np.shape(fake)[0]):
-    tset[0].append(fake[f][0])
-    tset[1].append(fake[f][1])
-  #tset[1] = tset[1] + fake[:][1]
-  vset = [lines[0][l:], lines[1][l:], [0] * (n-l)]# + [[fake_sentence_and_context(vocabulary_size) for _ in range(n-l)]]
-  fake = [fake_sentence_and_context(n - l, vset) for _ in range(n-l)]
-  for f in range(np.shape(fake)[0]):
-    vset[0].append(fake[f][0])
-    vset[1].append(fake[f][1])
-  print (np.shape(tset))
-  print (np.shape(vset))
-  tlabels = [1]*l + [0]*l
-  vlabels = [1]*(n-l) + [0]*(n-l)
-  tset[2] = tlabels
-  vset[2] = vlabels
-  #import pdb; pdb.set_trace()
-  print (vlabels)
-  with open(fname+'.pkl','w+') as f:
-    pickle.dump((tset,tlabels),f)
-    pickle.dump((vset,vlabels),f)
-  return tset, vset
+def split_dataset(dataset, ratio = 0.9):
+    
+    n_set = int (ratio * dataset['len'] )
+
+    set1, set2 = {}, {}
+
+    set1['context'],  set2['context']   = dataset['context'][:n_set],  dataset['context'][n_set:]
+    set1['response'], set2['response']  = dataset['response'][:n_set], dataset['response'][n_set:]
+    if dataset['is_disc']:
+        set1['label'], set2['label'] = dataset['label'][:n_set], dataset['label'][n_set:]
+    set1['is_disc'],  set2['is_disc'] = dataset['is_disc'], dataset['is_disc']
+    set1['len'], set2['len'] = n_set, dataset['len'] - n_set
+
+    return set1, set2
+
+
+
+def create_dataset(fname, is_disc=True):
+
+    with open(fname,'r') as f:
+        dialogs = [x.strip().split('|') for x in f.readlines()]
+        n_sent, n_context = np.shape(dialogs)
+    
+    dataset = {}
+    dataset['context']      = np.array([map(int,x[0].split(" ")) for x in dialogs])
+    dataset['response']     = np.array([map(int,x[1].split(" ")) for x in dialogs])
+    if is_disc:
+        dataset['label']    = np.array([1] * n_sent)
+    dataset['len']          = n_sent
+    dataset['is_disc']      = is_disc
+
+    return dataset
+
+
+def gen_dataset_w_false_ex(dataset):
+  
+    def gen_false_dataset(dataset, n_sent):
+    
+        context, response    = [], []
+
+        rand1,rand2  = 0, 0
+        while rand1 == rand2:
+            rand1 = random.randint(0,n_sent-1)
+            rand2 = random.randint(0,n_sent-1)
+
+        context, response   = dataset['context'][rand1], dataset['response'][rand2]
+        return context, response
+
+
+    mixed_dataset = dataset.copy()
+    n_sent = dataset['len']
+
+    fcontext, fresponse    = [], []
+    for _ in range(n_sent):
+        fc, fr =  gen_false_dataset(dataset, n_sent) 
+        fcontext.append(fc)
+        fresponse.append(fr)
+     
+    mixed_dataset['context']  = np.append(mixed_dataset['context'], fcontext)
+    mixed_dataset['response'] = np.append(mixed_dataset['response'], fresponse)
+    if dataset['is_disc']:
+        mixed_dataset['label']    = np.append(mixed_dataset['label'], [0]*n_sent)
+
+    mixed_dataset['len'] = dataset['len'] + n_sent
+      
+    return mixed_dataset
 
 
 

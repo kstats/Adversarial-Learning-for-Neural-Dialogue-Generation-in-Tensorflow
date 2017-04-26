@@ -24,9 +24,9 @@ def gen_pre_train():
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_search=False):
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                source_inputs, source_outputs, mc_search=mc_search)
-    #print("disc_train_data, mc_search: ", mc_search)
-    #for input, label in zip(sample_inputs, sample_labels):
-     #   print(str(label) + "\t" + str(input))
+    print("disc_train_data, mc_search: ", mc_search)
+    for input, response, label in zip(sample_context, sample_response, sample_labels):
+       print(str(label) + "\t" + str(input) + "\t" + str(response))
 
     sample_inputs = zip(sample_context, sample_response)
     def len_argsort(seq):
@@ -154,6 +154,7 @@ def al_train():
             # 5.Teacher-Forcing: Update G on (X, Y )
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only=False, up_reward=False)
             print("loss: ", loss)
+            #import pdb; pdb.set_trace()
 
         #add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

@@ -334,8 +334,10 @@ def translate(data_path):
       #import pdb; pdb.set_trace()
   return sentences
 
-def decode_sentence(sent,vocab, reverse):
+def decode_sentence(sent, vocab, reverse):
+    #TODO
    return ' '.join(map(lambda x: reverse[int(x)-1],sent))
+   #return ' '.join(map(lambda x: reverse[int(x)], sent))
 
 def decode_file(fname):   
    v, r = initialize_vocabulary("./data/movie_25000")

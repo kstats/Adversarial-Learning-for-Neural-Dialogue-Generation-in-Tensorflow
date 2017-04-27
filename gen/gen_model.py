@@ -63,8 +63,8 @@ class Seq2SeqModel(object):
                 local_b = tf.cast(b, tf.float32)
                 local_inputs = tf.cast(inputs, tf.float32)
                 return tf.cast(
-                    tf.nn.sampled_softmax_loss(local_w_t, local_b, local_inputs, labels,
-                                              num_samples, self.target_vocab_size),
+                    tf.nn.sampled_softmax_loss(weights=local_w_t, biases=local_b, labels=labels, inputs=local_inputs,
+                                               num_sampled=num_samples, num_classes=self.target_vocab_size),
                     dtype)
             softmax_loss_function = sampled_loss
 
@@ -73,6 +73,7 @@ class Seq2SeqModel(object):
         #
         #                                       lambda:sampled_loss)
         else:
+            print ("Proceed with caution...policy gradient.")
             softmax_loss_function = policy_gradient
 
         #loss_function = tf.select(self.up_reward, policy_gradient, softmax_loss_function)

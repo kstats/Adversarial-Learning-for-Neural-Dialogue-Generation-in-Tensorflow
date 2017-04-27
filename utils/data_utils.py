@@ -481,9 +481,9 @@ def dataset_padding(dataset, max_len):
 
 def convert_to_format(dataset):
     
-    return ( np.stack([dataset['context'], dataset['response']], axis = 1), 
+    return ( np.stack([dataset['context'], dataset['response']], axis = 1), # batch * 2 * maxlen
                 dataset['label'], 
-                np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))
+                np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))   # mask is maxlen * batch * 2 [2 is ctx,response]
 
 #file path
 # dataset_path='data/training30k.txt.query.pkl'
@@ -497,11 +497,11 @@ def load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = Tr
  
     #TODO change this to be dynamic
     dataset                     = create_dataset(fname)
-    tarin_dataset, test_set     = split_dataset(dataset)
+    train_dataset, test_set     = split_dataset(dataset)
     
     #shuffle and generate train and valid dataset
-    shuffled_tarin_dataset      = shuffle_dataset(tarin_dataset)
-    train_set, valid_set        = split_dataset(shuffled_tarin_dataset, 1 - valid_portion)
+    shuffled_train_dataset      = shuffle_dataset(train_dataset)
+    train_set, valid_set        = split_dataset(shuffled_train_dataset, 1 - valid_portion)
 
 
     train_set = convert_to_format(dataset_padding(train_set, max_len))

@@ -330,17 +330,15 @@ def translate(data_path):
       #import pdb; pdb.set_trace()
   return sentences
 
+def decode_sentence(sent,vocab, reverse):
+   return ' '.join(map(lambda x: reverse[int(x)-1],sent))
 
-#def decode_file(fname):
-#    
-#    def decode_sentence(sent,vocab, reverse):
-#        return ' '.join(map(lambda x: reverse[int(x)-1],sent))
-#
-#    v, r = initialize_vocabulary("./data/movie_25000")
-#    with open(fname,'r') as f:
-#        lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
-#    with open(fname+'.decoded','w+') as f:
-#        f.writelines([decode_sentence(x,v,r)+'\n' for x in lines])
+def decode_file(fname):   
+   v, r = initialize_vocabulary("./data/movie_25000")
+   with open(fname,'r') as f:
+       lines = [map(int,x.strip().split(' ')) for x in f.readlines()]
+   with open(fname+'.decoded','w+') as f:
+       f.writelines([decode_sentence(x,v,r)+'\n' for x in lines])
 
 
 #def create_disc_pretrain_data(fname, vocabulary_size):

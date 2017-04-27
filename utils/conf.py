@@ -34,7 +34,7 @@ class gen_config(object):
     data_dir                    = "data/"
     train_ratio                 = 0.9
     train_dir                   = "data/"
-    train_data_file             = "training30k.txt"
+    train_data_file             = "training200k.txt"
     max_train_data_size         = 0
     steps_per_checkpoint        = 200
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

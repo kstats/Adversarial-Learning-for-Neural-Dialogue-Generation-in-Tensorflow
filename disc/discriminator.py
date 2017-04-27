@@ -84,17 +84,12 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         feed_dict[model.mask_c]=mask_x[:,:,0]
         feed_dict[model.mask_r]=mask_x[:,:,1]
         model.assign_new_batch_size(session,len(x))
-<<<<<<< HEAD
         fetches = [model.cost,model.accuracy,model.train_op,model.summary, model.prediction, model.logits,  model.grads]
         # state = session.run(model._initial_state)
         #for i , (c,h) in enumerate(model._initial_state):
          #   feed_dict[c]=state[i].c
           #  feed_dict[h]=state[i].h
         cost,accuracy,_,summary, pred, logits, grads  = session.run(fetches,feed_dict)
-=======
-        fetches = [model.cost,model.accuracy,model.train_op,model.summary, model.prediction, model.logits, model.lstm_w, model.grads]
-        cost,accuracy,_,summary, pred, logits, w, grads  = session.run(fetches,feed_dict)
->>>>>>> bc3f9e1ef4f4d55ff36e6e98a87ddddb453f31ed
         # print (y)
         # print (pred)
         # print(logits)        

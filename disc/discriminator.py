@@ -131,7 +131,7 @@ def train_step(config_disc, config_evl):
     eval_config=config_evl
     eval_config.keep_prob=1.0
 
-    train_data,valid_data,test_data=data_helper.load_data(True, config.max_len,batch_size=config.batch_size)
+    train_data,valid_data,test_data=data_helper.load_data(debug = True, max_len = config.max_len)
     print("begin training")
 
     # gpu_config=tf.ConfigProto()
@@ -193,9 +193,3 @@ def main(_):
 
 if __name__ == "__main__":
     tf.app.run()
-
-
-
-
-
-

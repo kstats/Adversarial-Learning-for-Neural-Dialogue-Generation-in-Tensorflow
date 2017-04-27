@@ -129,8 +129,6 @@ def al_train():
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
                                                         source_inputs,source_outputs,mc_search=False)
-            #import pdb;pdb.set_trace()
-
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 
@@ -156,7 +154,6 @@ def al_train():
             # 5.Teacher-Forcing: Update G on (X, Y )
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only=False, up_reward=False)
             print("loss: ", loss)
-            #import pdb; pdb.set_trace()
 
         #add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

@@ -22,18 +22,19 @@ class disc_config(object):
     checkpoint_every = 10
 
 class gen_config(object):
-    beam_size = 5
-    learning_rate = 0.5
-    learning_rate_decay_factor = 0.99
-    max_gradient_norm = 5.0
-    batch_size = 1
-    size = 256
-    num_layers = 2
-    vocab_size = 25000
-    data_dir = "data/"
-    train_dir = "data/"
-    max_train_data_size = 0
-    steps_per_checkpoint = 200
-    buckets = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
-
-
+    beam_size                   = 5
+    learning_rate               = 0.5
+    learning_rate_decay_factor  = 0.99
+    max_gradient_norm           = 5.0
+    batch_size                  = 1
+    size                        = 256
+    num_layers                  = 2
+    vocab_size                  = 25000
+    vocab_path                  = './data/movie_25000'
+    data_dir                    = "data/"
+    train_ratio                 = 0.9
+    train_dir                   = "data/"
+    train_data_file             = "training30k.txt"
+    max_train_data_size         = 0
+    steps_per_checkpoint        = 200
+    buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

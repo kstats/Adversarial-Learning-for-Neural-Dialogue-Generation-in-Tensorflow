@@ -240,7 +240,7 @@ class Seq2SeqModel(object):
         batch_size = 1
     for batch_i in xrange(batch_size):
       if type == 1:
-        encoder_input, decoder_input = train_data[bucket_id]
+        encoder_input, decoder_input = train_data[bucket_id]   
       elif type == 2:
         #print("data[bucket_id]: ", data[bucket_id][0])
         encoder_input_a, decoder_input = train_data[bucket_id][0]
@@ -249,8 +249,9 @@ class Seq2SeqModel(object):
           encoder_input, decoder_input = random.choice(train_data[bucket_id])
           #print("train en: %s, de: %s" %(encoder_input, decoder_input))
 
-      batch_source_encoder.append(encoder_input)
-      batch_source_decoder.append(decoder_input)
+      batch_source_encoder.append(encoder_input)              # batch_source_encoder is a sampled column of queries (unpadded)
+      batch_source_decoder.append(decoder_input)              # batch_source_decoder of answers, ended by EOS  
+                                                               
       # Encoder inputs are padded and then reversed.
       encoder_pad = [data_utils.PAD_ID] * (encoder_size - len(encoder_input))
       encoder_inputs.append(list(reversed(encoder_input + encoder_pad)))
@@ -268,12 +269,15 @@ class Seq2SeqModel(object):
       batch_encoder_inputs.append(
           np.array([encoder_inputs[batch_idx][length_idx]
                     for batch_idx in xrange(batch_size)], dtype=np.int32))
+    # at this point, batch_encoder_inputs are transposed, enc_size*batch_size
 
     # Batch decoder inputs are re-indexed decoder_inputs, we create weights.
     for length_idx in xrange(decoder_size):
       batch_decoder_inputs.append(
           np.array([decoder_inputs[batch_idx][length_idx]
                     for batch_idx in xrange(batch_size)], dtype=np.int32))
+
+      # Each line is a word across the entire batch. Some of them are just pads, some are real
 
       # Create target_weights to be 0 for targets that are padding.
       batch_weight = np.ones(batch_size, dtype=np.float32)
@@ -285,5 +289,8 @@ class Seq2SeqModel(object):
         if length_idx == decoder_size - 1 or target == data_utils.PAD_ID:
           batch_weight[batch_idx] = 0.0
       batch_weights.append(batch_weight)
+
+
+    # Returning: transposed/padded/GO/EOSed/ (x2  = source+target)  ||  weights as photographed || EOSed (x2 = source+target)
 
     return (batch_encoder_inputs, batch_decoder_inputs, batch_weights, batch_source_encoder, batch_source_decoder)

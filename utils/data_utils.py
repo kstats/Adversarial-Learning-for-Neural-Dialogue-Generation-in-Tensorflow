@@ -41,9 +41,10 @@ _UNK = b"_UNK"
 _START_VOCAB = [_PAD, _GO, _EOS, _UNK]
 
 PAD_ID = 0
-GO_ID = 1
-EOS_ID = 2
-UNK_ID = 3
+UNK_ID = 1
+GO_ID = 25001
+EOS_ID = 25002
+
 
 # Regular expressions used to tokenize.
 _WORD_SPLIT = re.compile(b"([.,!?\"':;)(])")

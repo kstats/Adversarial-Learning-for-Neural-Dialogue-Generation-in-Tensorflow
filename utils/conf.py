@@ -4,7 +4,7 @@ class disc_config(object):
     batch_size = 128
     lr = 0.1
     lr_decay = 0.6
-    vocabulary_size = 25000
+    vocabulary_size = 25003
     embed_dim = 128
     hidden_neural_size = 512
     hidden_layer_num = 1
@@ -30,7 +30,7 @@ class gen_config(object):
     batch_size                  = 1
     size                        = 256
     num_layers                  = 2
-    vocab_size                  = 25000
+    vocab_size                  = 25003
     vocab_path                  = './data/movie_25000'
     data_dir                    = "data/"
     train_ratio                 = 0.9

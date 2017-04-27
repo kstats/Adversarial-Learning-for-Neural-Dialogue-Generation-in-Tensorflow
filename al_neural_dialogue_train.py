@@ -25,6 +25,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                source_inputs, source_outputs, mc_search=mc_search)
     print("disc_train_data, mc_search: ", mc_search)
+    import pdb; pdb.set_trace()
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
 
@@ -168,9 +169,9 @@ def main(_):
     # translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
     # for t in translated:
     #     print t
-    disc_pre_train()
+    # disc_pre_train()
     # gen_pre_train()
-    # al_train()
+    al_train()
 
 if __name__ == "__main__":
     tf.app.run()

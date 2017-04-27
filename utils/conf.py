@@ -9,6 +9,7 @@ class disc_config(object):
     hidden_neural_size = 512
     hidden_layer_num = 1
     train_dir = 'data/training30k.txt.query.pkl'
+    train_data_file = "./data/training200k.txt"
     max_len = 40
     valid_num = 100
     checkpoint_num = 1000

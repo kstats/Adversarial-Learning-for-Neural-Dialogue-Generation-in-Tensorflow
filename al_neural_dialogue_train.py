@@ -168,8 +168,8 @@ def main(_):
     # translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
     # for t in translated:
     #     print t
-    #disc_pre_train()
-    gen_pre_train()
+    disc_pre_train()
+    # gen_pre_train()
     # al_train()
 
 if __name__ == "__main__":

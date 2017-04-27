@@ -493,15 +493,17 @@ def set_dataset_path(path):
     dataset_path=path
 
 
-def load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
+def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
  
+    import pdb; pdb.set_trace()
     #TODO change this to be dynamic
     dataset                     = create_dataset(fname)
-    train_dataset, test_set     = split_dataset(dataset)
-    
+    mixed_dataset               = gen_dataset_w_false_ex(dataset)
     #shuffle and generate train and valid dataset
-    shuffled_train_dataset      = shuffle_dataset(train_dataset)
-    train_set, valid_set        = split_dataset(shuffled_train_dataset, 1 - valid_portion)
+    shuffled_mixed_dataset      = shuffle_dataset(mixed_dataset)
+    
+    train_dataset, test_set     = split_dataset(shuffled_mixed_dataset)
+    train_set, valid_set        = split_dataset(train_dataset, 1 - valid_portion)
 
 
     train_set = convert_to_format(dataset_padding(train_set, max_len))

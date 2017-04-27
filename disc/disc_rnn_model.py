@@ -3,7 +3,7 @@ import numpy as np
 
 class disc_rnn_model(object):
 
-    def __init__(self, config, scope_name="disc_rnn", is_training=True):
+    def __init__(self, config, scope_name="disc_rnn", is_training=True, isLstm=False):
         self.scope_name = scope_name
         with tf.variable_scope(self.scope_name):
             self.keep_prob=config.keep_prob
@@ -115,15 +115,37 @@ class disc_rnn_model(object):
                 self.out_put2_test, state = tf.nn.dynamic_rnn(cell2, response_inputs, sequence_length = self.mask_r_len, initial_state = self._initial_state)
                 self.out_put2 = self.out_put2_test[:,-1,:]
                 self.output2 = extract_axis_1(self.out_put2_test,self.mask_r_len-1)
+                import pdb; pdb.set_trace()
                 out_put2 = self.output2
 
-            with tf.variable_scope("Combine_LSTM"):
-                cat_input = tf.concat(1, [out_put1, out_put2])
-                self.lstm_w = tf.get_variable("lstm_w", [cat_input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
-                lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
-                out_put = tf.nn.relu(tf.matmul(cat_input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
-                #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
-                
+            if not isLstm:
+                with tf.variable_scope("Combine_LSTM"):
+                    cat_input = tf.concat(1, [out_put1, out_put2])
+                    self.lstm_w = tf.get_variable("lstm_w", [cat_input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                    lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                    out_put = tf.nn.relu(tf.matmul(cat_input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
+                    #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
+            else:
+                lstm_cell3 = tf.nn.rnn_cell.BasicLSTMCell(hidden_neural_size, forget_bias=0.0, state_is_tuple=True)
+                if self.keep_prob < 1:
+                    lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
+                        lstm_cell3, output_keep_prob=self.keep_prob
+                    )
+                cell3 = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * hidden_layer_num, state_is_tuple=True)
+                self._initial_state3 = cell3.zero_state(self.batch_size, dtype=tf.float32)
+                with tf.variable_scope("Combine_LSTM"):
+                    #self.comb_inputs = tf.Variable(tf.zeros([None, 2, hidden_neural_size]), name="combined_input")
+                    #self.comb_inputs[:,0,:] = out_put1
+                    #self.comb_inputs[:,1,:] = out_put2
+                    self.comb_inputs = tf.transpose(tf.stack([out_put1, out_put2]), [1,0,2])
+                    #self.comb_inputs.transpose([1,0,2])
+                    self.size = tf.ones([self.batch_size], dtype=tf.int32) + 1
+                    self.out_put3_test, state = tf.nn.dynamic_rnn(cell3, self.comb_inputs,
+                                                                 sequence_length=self.size,
+                                                                 initial_state=self._initial_state3)
+                    out_put = extract_axis_1(self.out_put3_test, tf.ones([self.batch_size], dtype=tf.int32))
+                    #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
+
 
             with tf.name_scope("Softmax_layer_and_output"):
                 softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,class_num],dtype=tf.float32, initializer=tf.random_normal_initializer())

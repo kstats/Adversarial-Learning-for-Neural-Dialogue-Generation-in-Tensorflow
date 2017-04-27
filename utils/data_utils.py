@@ -495,10 +495,10 @@ def set_dataset_path(path):
     dataset_path=path
 
 
-def load_data(max_len, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
+def load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
  
     #TODO change this to be dynamic
-    dataset                     = create_dataset("data/training200k.txt") 
+    dataset                     = create_dataset(fname)
     tarin_dataset, test_set     = split_dataset(dataset)
     
     #shuffle and generate train and valid dataset

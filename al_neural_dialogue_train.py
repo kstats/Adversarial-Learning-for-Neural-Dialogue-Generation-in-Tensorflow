@@ -172,8 +172,8 @@ def main(_):
     # for t in translated:
     #     print t
     #disc_pre_train()
-    # gen_pre_train()
-    al_train()
+    gen_pre_train()
+    # al_train()
 
 if __name__ == "__main__":
   tf.app.run()

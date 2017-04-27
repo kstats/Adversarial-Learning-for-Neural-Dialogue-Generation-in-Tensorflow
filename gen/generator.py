@@ -132,6 +132,13 @@ def train(gen_config):
             loss += step_loss / gen_config.steps_per_checkpoint
             current_step += 1
 
+            if current_step % 50 == 0:
+              sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
+                                               batch_source_encoder, batch_source_decoder, mc_search=False)
+              print("Sampled generator:\n")
+              for input, response, label in zip(sample_context, sample_response, sample_labels):
+                print(str(label) + "\t" + str(input) + "\t" + str(response))
+
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 

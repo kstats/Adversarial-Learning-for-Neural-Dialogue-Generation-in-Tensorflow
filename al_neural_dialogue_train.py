@@ -76,7 +76,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
         return new_set
 
     train_inputs, train_labels, train_masks =padding_and_generate_mask(train_set[0],train_set[1],
-                                                                     new_train_set_x,new_train_set_y,mask_train_x, responses)
+                                                                     new_train_set_x,new_train_set_y,mask_train_x)
     return train_inputs, train_labels, train_masks, responses
 
 # discriminator api
@@ -173,4 +173,4 @@ def main(_):
     # al_train()
 
 if __name__ == "__main__":
-  tf.app.run()
+    tf.app.run()

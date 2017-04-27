@@ -27,7 +27,6 @@ class disc_rnn_model(object):
             self._batch_size_update = tf.assign(self.batch_size,self.new_batch_size)
 
             #build LSTM network
-
             lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(hidden_neural_size,forget_bias=0.0,state_is_tuple=True)
             if self.keep_prob<1:
                 lstm_cell =  tf.nn.rnn_cell.DropoutWrapper(
@@ -45,8 +44,6 @@ class disc_rnn_model(object):
 
             cell2 = tf.nn.rnn_cell.MultiRNNCell([lstm_cell2] * hidden_layer_num, state_is_tuple=True)
 
-
-
             self._initial_state = cell.zero_state(self.batch_size,dtype=tf.float32)
 
             #embedding layer
@@ -54,33 +51,12 @@ class disc_rnn_model(object):
             with tf.device("/cpu:0"),tf.name_scope("embedding_layer_context"):
                 embedding = tf.get_variable("embedding",[vocabulary_size,embed_dim],dtype=tf.float32)
                 context_inputs = self.context_inputs=tf.nn.embedding_lookup(embedding,self.context) #[batch_size, max_len, embed_dim]
-                #embedding_response = tf.get_variable("embedding", [vocabulary_size, embed_dim],
-                 #                                    dtype=tf.float32)
                 response_inputs = self.response_inputs=tf.nn.embedding_lookup(embedding,self.response) #[batch_size, max_len, embed_dim]
-
-            #with tf.device("/cpu:0"),tf.name_scope("embedding_layer_response"):
-             #   embedding_response = tf.get_variable("embedding_response",[vocabulary_size,embed_dim],dtype=tf.float32)
-              #  response_inputs=tf.nn.embedding_lookup(embedding_response,self.response) #[batch_size, max_len, embed_dim]
 
             #TODO how should I handle both dropouts?
             if self.keep_prob<1:
                 context_inputs = tf.nn.dropout(context_inputs,self.keep_prob)
                 response_inputs = tf.nn.dropout(response_inputs,self.keep_prob)
-
-            '''out_put=[]
-            state=self._initial_state
-            with tf.variable_scope("LSTM_layer"):
-                for time_step in range(max_len):
-                    if time_step>0: tf.get_variable_scope().reuse_variables()
-                    (cell_output,state)=cell(inputs[:,time_step,:],state)
-                    out_put.append(cell_output)
-            # import pdb; pdb.set_trace()
-
-            out_put=out_put*self.mask_x[:,:,None]
-
-            with tf.name_scope("mean_pooling_layer"):
-
-                out_put=tf.reduce_sum(out_put,0)/(tf.reduce_sum(self.mask_x,0)[:,None])'''
 
 
             def extract_axis_1(data, ind):
@@ -106,11 +82,7 @@ class disc_rnn_model(object):
                 self.out_put1 = self.out_put1_test[:,-1,:]
                 self.output1 = extract_axis_1(self.out_put1_test,self.mask_c_len-1)
                 out_put1 = self.output1
-                #out_put = tf.pack(outputs)
-                #outputs = tf.transpose(outputs, [1, 0, 2])
-            #with tf.name_scope("mean_pooling_layer"):
 
-             #   out_put = tf.reduce_sum(out_put, 0) #/ (tf.reduce_sum(self.mask_x, 0)[:, None])             
             with tf.variable_scope("LSTM_layer_response"):
                 self.out_put2_test, state = tf.nn.dynamic_rnn(cell2, response_inputs, sequence_length = self.mask_r_len, initial_state = self._initial_state)
                 self.out_put2 = self.out_put2_test[:,-1,:]
@@ -122,7 +94,6 @@ class disc_rnn_model(object):
                 self.lstm_w = tf.get_variable("lstm_w", [cat_input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
                 lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
                 out_put = tf.nn.relu(tf.matmul(cat_input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
-                #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
                 
 
             with tf.name_scope("Softmax_layer_and_output"):
@@ -142,7 +113,6 @@ class disc_rnn_model(object):
 
             #add summary
             loss_summary = tf.summary.scalar("loss",self.cost)
-            #add summary
             accuracy_summary=tf.summary.scalar("accuracy_summary",self.accuracy)
 
             if not is_training:
@@ -174,13 +144,11 @@ class disc_rnn_model(object):
 
 
             optimizer = tf.train.GradientDescentOptimizer(self.lr)
-            # optimizer.apply_gradients(zip(grads, tvars))
             self.train_op=optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
 
             self.new_lr = tf.placeholder(tf.float32,shape=[],name="new_learning_rate")
             self._lr_update = tf.assign(self.lr,self.new_lr)
 
-            #all_variables = [k for k in tf.global_variables() if k.name.startswith(self.scope_name)]
             all_variables = [k for k in tf.global_variables() if self.scope_name in k.name]
             self.saver = tf.train.Saver(all_variables)
 

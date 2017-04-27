@@ -148,14 +148,6 @@ def train(gen_config):
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")
                 model.saver.save(sess, checkpoint_path, global_step=model.global_step)
                 step_time, loss = 0.0, 0.0
-                # Run evals on development set and print their perplexity.
-                # for bucket_id in xrange(len(_buckets)):
-                #   encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                #       dev_set, bucket_id)
-                #   _, eval_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
-                #                                target_weights, bucket_id, True)
-                #   eval_ppx = math.exp(eval_loss) if eval_loss < 300 else float('inf')
-                #   print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
                 sys.stdout.flush()
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
@@ -169,13 +161,8 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     def greedy_dec(output_logits):
       selected_token_ids = [int(np.argmax(logit, axis=1)) for logit in output_logits]
-      # if data_utils.EOS_ID in selected_token_ids:
-      #   eos = selected_token_ids.index(data_utils.EOS_ID)
-      #   selected_token_ids = selected_token_ids[:eos]
-      #output_sentence = ' '.join([rev_vocab[t] for t in selected_token_ids])
       return selected_token_ids
 
-    #input_token_ids = data_utils.sentence_to_token_ids(input_sentence, vocab)
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
     outputs = []

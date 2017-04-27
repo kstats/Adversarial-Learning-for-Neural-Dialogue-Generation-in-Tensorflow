@@ -30,6 +30,9 @@ import tensorflow as tf
 import numpy as np
 import pickle
 import random
+import cPickle as pkl
+
+
 # Special vocabulary symbols - we always put them at the start.
 _PAD = b"_PAD"
 _GO = b"_GO"
@@ -47,62 +50,62 @@ _WORD_SPLIT = re.compile(b"([.,!?\"':;)(])")
 _DIGIT_RE = re.compile(br"\d")
 
 # URLs for WMT data.
-_WMT_ENFR_TRAIN_URL = "http://www.statmt.org/wmt10/training-giga-fren.tar"
-_WMT_ENFR_DEV_URL = "http://www.statmt.org/wmt15/dev-v2.tgz"
+#_WMT_ENFR_TRAIN_URL = "http://www.statmt.org/wmt10/training-giga-fren.tar"
+#_WMT_ENFR_DEV_URL = "http://www.statmt.org/wmt15/dev-v2.tgz"
 
 
-def maybe_download(directory, filename, url):
-  """Download filename from url unless it's already in directory."""
-  if not os.path.exists(directory):
-    print("Creating directory %s" % directory)
-    os.mkdir(directory)
-  filepath = os.path.join(directory, filename)
-  if not os.path.exists(filepath):
-    print("Downloading %s to %s" % (url, filepath))
-    filepath, _ = urllib.request.urlretrieve(url, filepath)
-    statinfo = os.stat(filepath)
-    print("Succesfully downloaded", filename, statinfo.st_size, "bytes")
-  return filepath
+#def maybe_download(directory, filename, url):
+#  """Download filename from url unless it's already in directory."""
+#  if not os.path.exists(directory):
+#    print("Creating directory %s" % directory)
+#    os.mkdir(directory)
+#  filepath = os.path.join(directory, filename)
+#  if not os.path.exists(filepath):
+#    print("Downloading %s to %s" % (url, filepath))
+#    filepath, _ = urllib.request.urlretrieve(url, filepath)
+#    statinfo = os.stat(filepath)
+#    print("Succesfully downloaded", filename, statinfo.st_size, "bytes")
+#  return filepath
 
 
-def gunzip_file(gz_path, new_path):
-  """Unzips from gz_path into new_path."""
-  print("Unpacking %s to %s" % (gz_path, new_path))
-  with gzip.open(gz_path, "rb") as gz_file:
-    with open(new_path, "wb") as new_file:
-      for line in gz_file:
-        new_file.write(line)
+#def gunzip_file(gz_path, new_path):
+#  """Unzips from gz_path into new_path."""
+#  print("Unpacking %s to %s" % (gz_path, new_path))
+#  with gzip.open(gz_path, "rb") as gz_file:
+#    with open(new_path, "wb") as new_file:
+#      for line in gz_file:
+#        new_file.write(line)
 
 
-def get_wmt_enfr_train_set(directory):
-  """Download the WMT en-fr training corpus to directory unless it's there."""
-  train_path = os.path.join(directory, "giga-fren.release2.fixed")
-  if not (gfile.Exists(train_path +".fr") and gfile.Exists(train_path +".en")):
-    corpus_file = maybe_download(directory, "training-giga-fren.tar",
-                                 _WMT_ENFR_TRAIN_URL)
-    print("Extracting tar file %s" % corpus_file)
-    with tarfile.open(corpus_file, "r") as corpus_tar:
-      corpus_tar.extractall(directory)
-    gunzip_file(train_path + ".fr.gz", train_path + ".fr")
-    gunzip_file(train_path + ".en.gz", train_path + ".en")
-  return train_path
+#def get_wmt_enfr_train_set(directory):
+#  """Download the WMT en-fr training corpus to directory unless it's there."""
+#  train_path = os.path.join(directory, "giga-fren.release2.fixed")
+#  if not (gfile.Exists(train_path +".fr") and gfile.Exists(train_path +".en")):
+#    corpus_file = maybe_download(directory, "training-giga-fren.tar",
+#                                 _WMT_ENFR_TRAIN_URL)
+#    print("Extracting tar file %s" % corpus_file)
+#    with tarfile.open(corpus_file, "r") as corpus_tar:
+#      corpus_tar.extractall(directory)
+#    gunzip_file(train_path + ".fr.gz", train_path + ".fr")
+#    gunzip_file(train_path + ".en.gz", train_path + ".en")
+#  return train_path
 
 
-def get_wmt_enfr_dev_set(directory):
-  """Download the WMT en-fr training corpus to directory unless it's there."""
-  dev_name = "newstest2013"
-  dev_path = os.path.join(directory, dev_name)
-  if not (gfile.Exists(dev_path + ".fr") and gfile.Exists(dev_path + ".en")):
-    dev_file = maybe_download(directory, "dev-v2.tgz", _WMT_ENFR_DEV_URL)
-    print("Extracting tgz file %s" % dev_file)
-    with tarfile.open(dev_file, "r:gz") as dev_tar:
-      fr_dev_file = dev_tar.getmember("dev/" + dev_name + ".fr")
-      en_dev_file = dev_tar.getmember("dev/" + dev_name + ".en")
-      fr_dev_file.name = dev_name + ".fr"  # Extract without "dev/" prefix.
-      en_dev_file.name = dev_name + ".en"
-      dev_tar.extract(fr_dev_file, directory)
-      dev_tar.extract(en_dev_file, directory)
-  return dev_path
+#def get_wmt_enfr_dev_set(directory):
+#  """Download the WMT en-fr training corpus to directory unless it's there."""
+#  dev_name = "newstest2013"
+#  dev_path = os.path.join(directory, dev_name)
+#  if not (gfile.Exists(dev_path + ".fr") and gfile.Exists(dev_path + ".en")):
+#    dev_file = maybe_download(directory, "dev-v2.tgz", _WMT_ENFR_DEV_URL)
+#    print("Extracting tgz file %s" % dev_file)
+#    with tarfile.open(dev_file, "r:gz") as dev_tar:
+#      fr_dev_file = dev_tar.getmember("dev/" + dev_name + ".fr")
+#      en_dev_file = dev_tar.getmember("dev/" + dev_name + ".en")
+#      fr_dev_file.name = dev_name + ".fr"  # Extract without "dev/" prefix.
+#      en_dev_file.name = dev_name + ".en"
+#      dev_tar.extract(fr_dev_file, directory)
+#      dev_tar.extract(en_dev_file, directory)
+#  return dev_path
 
 
 def basic_tokenizer(sentence):
@@ -481,3 +484,55 @@ def convert_to_format(dataset):
     return ( np.stack([dataset['context'], dataset['response']], axis = 1), 
                 dataset['label'], 
                 np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))
+
+#file path
+# dataset_path='data/training30k.txt.query.pkl'
+#dataset_path='data/subj0.pkl'
+
+def set_dataset_path(path):
+    dataset_path=path
+
+
+def load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
+ 
+    #TODO change this to be dynamic
+    dataset                     = create_dataset(fname)
+    tarin_dataset, test_set     = split_dataset(dataset)
+    
+    #shuffle and generate train and valid dataset
+    shuffled_tarin_dataset      = shuffle_dataset(tarin_dataset)
+    train_set, valid_set        = split_dataset(shuffled_tarin_dataset, 1 - valid_portion)
+
+
+    train_set = convert_to_format(dataset_padding(train_set, max_len))
+
+    valid_set = convert_to_format(dataset_padding(valid_set, max_len))
+
+    test_set = convert_to_format(dataset_padding(test_set, max_len))
+
+    #remove unknow words
+    def remove_unk(x):
+        return [[1 if w >= n_words else w for w in sen] for sen in x]
+    def len_argsort(seq):
+        return sorted(range(len(seq)), key=lambda x: len(seq[x]))
+   
+    return train_set,valid_set,test_set
+
+
+#return batch dataset
+def batch_iter(data,batch_size):
+
+    #get dataset and label
+    x,y,mask_x=data
+    x=np.array(x)
+    y=np.array(y)
+    data_size=len(x)
+    num_batches_per_epoch=int((data_size-1)/batch_size)
+    for batch_index in range(num_batches_per_epoch):
+        start_index=batch_index*batch_size
+        end_index=min((batch_index+1)*batch_size,data_size)
+        return_x = x[start_index:end_index]
+        return_y = y[start_index:end_index]
+        return_mask_x = mask_x[:,start_index:end_index]
+        yield (return_x,return_y,return_mask_x)
+   

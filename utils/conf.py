@@ -15,7 +15,7 @@ class disc_config(object):
     checkpoint_num = 1000
     init_scale = 0.1
     class_num = 2
-    keep_prob = 0.8
+    keep_prob = 0.6
     num_epoch = 60
     max_decay_epoch = 30
     max_grad_norm = 5
@@ -35,7 +35,9 @@ class gen_config(object):
     data_dir                    = "data/"
     train_ratio                 = 0.9
     train_dir                   = "data/"
-    train_data_file             = "training200k.txt"
+    train_data_file             = "training20.txt"
+    # train_data_file             = "training200k.txt"
     max_train_data_size         = 0
     steps_per_checkpoint        = 200
+    keep_prob                   = 1.
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

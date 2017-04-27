@@ -16,7 +16,7 @@ class Seq2SeqModel(object):
 
   def __init__(self,
                source_vocab_size, target_vocab_size, buckets, size, num_layers, max_gradient_norm, batch_size,
-            learning_rate, learning_rate_decay_factor, use_lstm=False,num_samples=512,forward_only=False,
+            learning_rate, learning_rate_decay_factor, keep_prob=1., use_lstm=False,num_samples=512,forward_only=False,
                scope_name='gen_seq2seq', dtype=tf.float32):
     
     self.scope_name = scope_name
@@ -83,6 +83,9 @@ class Seq2SeqModel(object):
         if use_lstm:
           single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
         cell = single_cell
+        if keep_prob < 1:
+          print('Generator Dropout %f' % keep_prob)
+          cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keep_prob)
         if num_layers > 1:
           cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
 

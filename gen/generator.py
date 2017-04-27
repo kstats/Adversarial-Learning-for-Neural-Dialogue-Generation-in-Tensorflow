@@ -61,7 +61,7 @@ def create_model(session, gen_config, forward_only):
     model = seq2seq_model.Seq2SeqModel(
       gen_config.vocab_size, gen_config.vocab_size, _buckets,
       gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
-      gen_config.learning_rate, gen_config.learning_rate_decay_factor, forward_only=forward_only)
+      gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob,forward_only=forward_only)
 
     ckpt = tf.train.get_checkpoint_state(gen_config.train_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):

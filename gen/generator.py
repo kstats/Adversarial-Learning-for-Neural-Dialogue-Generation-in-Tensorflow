@@ -19,8 +19,9 @@ import utils.data_utils as data_utils
 import utils.conf as conf
 import gen.gen_model as seq2seq_model
 from tensorflow.python.platform import gfile
-sys.path.append('../utils')
 
+sys.path.append('../utils')
+import utils.data_utils as du
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
@@ -126,7 +127,10 @@ def train(gen_config):
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
-
+                #print("INPUT DECODED")
+                #print(du.decode_sentence(input, vocab, rev_vocab))
+                #print("OUTPUT DECODED")
+                #print(du.decode_sentence(response, vocab, rev_vocab))
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 

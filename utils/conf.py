@@ -34,8 +34,8 @@ class gen_config(object):
     vocab_path                  = './data/movie_25000'
     data_dir                    = "data/"
     train_ratio                 = 0.9
-    train_dir                   = "data/"
-    train_data_file             = "training200k.txt"
+    train_dir                   = "training_runs/"
+    train_data_file             = "chitchat.dev"
     max_train_data_size         = 0
     steps_per_checkpoint        = 200
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

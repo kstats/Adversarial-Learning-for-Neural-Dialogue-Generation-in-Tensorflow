@@ -25,6 +25,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                source_inputs, source_outputs, mc_search=mc_search)
     print("disc_train_data, mc_search: ", mc_search)
+    import pdb; pdb.set_trace()
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
 
@@ -76,7 +77,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
         return new_set
 
     train_inputs, train_labels, train_masks =padding_and_generate_mask(train_set[0],train_set[1],
-                                                                     new_train_set_x,new_train_set_y,mask_train_x, responses)
+                                                                     new_train_set_x,new_train_set_y,mask_train_x)
     return train_inputs, train_labels, train_masks, responses
 
 # discriminator api
@@ -129,8 +130,6 @@ def al_train():
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
                                                         source_inputs,source_outputs,mc_search=False)
-            #import pdb;pdb.set_trace()
-
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 
@@ -156,7 +155,6 @@ def al_train():
             # 5.Teacher-Forcing: Update G on (X, Y )
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only=False, up_reward=False)
             print("loss: ", loss)
-            #import pdb; pdb.set_trace()
 
         #add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))
@@ -171,9 +169,9 @@ def main(_):
     # translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
     # for t in translated:
     #     print t
-    #disc_pre_train()
+    # disc_pre_train()
     # gen_pre_train()
     al_train()
 
 if __name__ == "__main__":
-  tf.app.run()
+    tf.app.run()

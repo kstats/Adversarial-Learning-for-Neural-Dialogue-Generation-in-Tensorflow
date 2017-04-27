@@ -24,28 +24,37 @@ sys.path.append('../utils')
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
-_buckets = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
+_buckets = conf.gen_config.buckets
 
-def read_data(source_path, target_path, max_size=None):
-  data_set = [[] for _ in _buckets]
-  with gfile.GFile(source_path, mode="r") as source_file:
-    with gfile.GFile(target_path, mode="r") as target_file:
-      source, target = source_file.readline(), target_file.readline()
-      counter = 0
-      while source and target and (not max_size or counter < max_size):
-        counter += 1
-        if counter % 100000 == 0:
-          print("  reading data line %d" % counter)
-          sys.stdout.flush()
-        source_ids = [int(x) for x in source.split()]
-        target_ids = [int(x) for x in target.split()]
-        target_ids.append(data_utils.EOS_ID)
-        for bucket_id, (source_size, target_size) in enumerate(_buckets): #[bucket_id, (source_size, target_size)]
-          if len(source_ids) < source_size and len(target_ids) < target_size:
-            data_set[bucket_id].append([source_ids, target_ids])
+
+def read_data(dataset, max_size=None):
+    data_set = [[] for _ in _buckets]
+    for i in range(dataset['len']):
+        if (max_size and i > max_size):
             break
-        source, target = source_file.readline(), target_file.readline()
-  return data_set
+        source_ids = dataset['context'][i]
+        target_ids = dataset['response'][i]
+        target_ids.append(data_utils.EOS_ID)
+        for bucket_id, (source_size, target_size) in enumerate(_buckets): 
+            if len(source_ids) < source_size and len(target_ids) < target_size:
+                data_set[bucket_id].append([source_ids, target_ids])
+                break
+    return data_set
+
+def prepare_data(gen_config):
+    
+    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
+    vocab, rev_vocab            = data_utils.initialize_vocabulary(gen_config.vocab_path)
+
+    dataset                     = data_utils.create_dataset(train_path, is_disc = False)
+    train_dataset, dev_dataset  = data_utils.split_dataset(dataset, ratio = gen_config.train_ratio )
+
+    # Read data into buckets and compute their sizes.
+    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
+    train_set, dev_set = read_data(train_dataset, gen_config.max_train_data_size), read_data(dev_dataset)
+
+    return vocab, rev_vocab, dev_set, train_set
+
 
 def create_model(session, gen_config, forward_only):
     """Create translation model and initialize or load parameters in session."""
@@ -62,27 +71,6 @@ def create_model(session, gen_config, forward_only):
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
     return model
-
-def prepare_data(gen_config):
-    # train_path = os.path.join(gen_config.data_dir, "chitchat.train")
-    train_path = os.path.join(gen_config.data_dir, "training30k.txt")
-    voc_file_path = [train_path+".answer", train_path+".query"]
-    vocab_path = './data/movie_25000'
-    # vocab_path = os.path.join(gen_config.data_dir, "vocab%d.all" % gen_config.vocab_size)
-    # data_utils.create_vocabulary(vocab_path, voc_file_path, gen_config.vocab_size)
-    vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
-
-    print("Preparing Chitchat data in %s" % gen_config.data_dir)
-    train_query, train_answer, dev_query, dev_answer = data_utils.prepare_chitchat_data(
-        gen_config.data_dir, vocab, gen_config.vocab_size)
-
-    # Read data into buckets and compute their sizes.
-    print ("Reading development and training data (limit: %d)."
-               % gen_config.max_train_data_size)
-    dev_set = read_data(dev_query, dev_answer)
-    train_set = read_data(train_query, train_answer, gen_config.max_train_data_size)
-
-    return vocab, rev_vocab, dev_set, train_set
 
 def softmax(x):
     prob = np.exp(x) / np.sum(np.exp(x), axis=0)
@@ -132,6 +120,13 @@ def train(gen_config):
             loss += step_loss / gen_config.steps_per_checkpoint
             current_step += 1
 
+            if current_step % 50 == 0:
+              sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
+                                               batch_source_encoder, batch_source_decoder, mc_search=False)
+              print("Sampled generator:\n")
+              for input, response, label in zip(sample_context, sample_response, sample_labels):
+                print(str(label) + "\t" + str(input) + "\t" + str(response))
+
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 
@@ -153,14 +148,6 @@ def train(gen_config):
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")
                 model.saver.save(sess, checkpoint_path, global_step=model.global_step)
                 step_time, loss = 0.0, 0.0
-                # Run evals on development set and print their perplexity.
-                # for bucket_id in xrange(len(_buckets)):
-                #   encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                #       dev_set, bucket_id)
-                #   _, eval_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
-                #                                target_weights, bucket_id, True)
-                #   eval_ppx = math.exp(eval_loss) if eval_loss < 300 else float('inf')
-                #   print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
                 sys.stdout.flush()
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
@@ -174,13 +161,8 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     def greedy_dec(output_logits):
       selected_token_ids = [int(np.argmax(logit, axis=1)) for logit in output_logits]
-      # if data_utils.EOS_ID in selected_token_ids:
-      #   eos = selected_token_ids.index(data_utils.EOS_ID)
-      #   selected_token_ids = selected_token_ids[:eos]
-      #output_sentence = ' '.join([rev_vocab[t] for t in selected_token_ids])
       return selected_token_ids
 
-    #input_token_ids = data_utils.sentence_to_token_ids(input_sentence, vocab)
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
     outputs = []

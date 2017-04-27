@@ -4,11 +4,12 @@ class disc_config(object):
     batch_size = 128
     lr = 0.1
     lr_decay = 0.6
-    vocabulary_size = 25000
+    vocabulary_size = 25003
     embed_dim = 128
     hidden_neural_size = 512
     hidden_layer_num = 1
     train_dir = 'data/training30k.txt.query.pkl'
+    train_data_file = "./data/training200k.txt"
     max_len = 40
     valid_num = 100
     checkpoint_num = 1000
@@ -22,18 +23,19 @@ class disc_config(object):
     checkpoint_every = 10
 
 class gen_config(object):
-    beam_size = 5
-    learning_rate = 0.5
-    learning_rate_decay_factor = 0.99
-    max_gradient_norm = 5.0
-    batch_size = 1
-    size = 256
-    num_layers = 2
-    vocab_size = 25000
-    data_dir = "data/"
-    train_dir = "data/"
-    max_train_data_size = 0
-    steps_per_checkpoint = 200
-    buckets = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
-
-
+    beam_size                   = 5
+    learning_rate               = 0.5
+    learning_rate_decay_factor  = 0.99
+    max_gradient_norm           = 5.0
+    batch_size                  = 1
+    size                        = 256
+    num_layers                  = 2
+    vocab_size                  = 25003
+    vocab_path                  = './data/movie_25000'
+    data_dir                    = "data/"
+    train_ratio                 = 0.9
+    train_dir                   = "data/"
+    train_data_file             = "training200k.txt"
+    max_train_data_size         = 0
+    steps_per_checkpoint        = 200
+    buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

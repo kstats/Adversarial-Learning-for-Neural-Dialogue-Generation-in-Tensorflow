@@ -8,9 +8,9 @@ import disc.discriminator as discs
 import utils.data_utils as data_util
 import utils.conf as conf
 
-gen_config = conf.gen_config
+gen_config  = conf.gen_config
 disc_config = conf.disc_config
-evl_config = conf.disc_config
+evl_config  = conf.disc_config
 
 # pre train discriminator
 def disc_pre_train():
@@ -40,36 +40,31 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     train_set_x = [sample_context[i] for i in sorted_index]
     train_set_y = [sample_labels[i] for i in sorted_index]
     train_set=(train_set_x,train_set_y)
-    #import pdb; pdb.set_trace()
     new_train_set_x=np.zeros([len(train_set[0]),2, disc_config.max_len])
-    #print("new_train_set: ", np.shape(new_train_set_x))
     new_train_set_y=np.zeros(len(train_set[0]))
-    #print("new_train_set_y: ", np.shape(new_train_set_y))
     mask_train_x=np.zeros([disc_config.max_len,len(train_set[0]), 2])
 
+
     def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x, responses):
-        #import pdb; pdb.set_trace()
         max_len = disc_config.max_len
         for i,(x,y) in enumerate(zip(x1,y1)):
             #whether to remove sentences with length larger than maxlen
             if len(x)<=max_len:
                 new_x[i,0,0:len(x)]=x
                 new_mask_x[0:len(x),i,0]=1
-                new_y[i]=y
             else:
                 new_x[i][0]=(x[0:max_len])
                 new_mask_x[:,i,0]=1
-                new_y[i]=y
+            new_y[i]=y
         for i,(x,y) in enumerate(zip(responses,y1)):
             #whether to remove sentences with length larger than maxlen
             if len(x)<=max_len:
                 new_x[i,1,0:len(x)]=x
                 new_mask_x[0:len(x),i,1]=1
-                new_y[i]=y
             else:
                 new_x[i][1]=(x[0:max_len])
                 new_mask_x[:,i,1]=1
-                new_y[i]=y
+            new_y[i]=y
         for j in range(np.shape(new_mask_x)[1]):
             for i in range(np.shape(new_mask_x)[2]):
                 if new_mask_x[0][j][i] == 0:
@@ -85,9 +80,6 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
 # discriminator api
 def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
     feed_dict={}
-    #feed_dict[disc_model.input_data]=train_inputs
-    #feed_dict[disc_model.target]=train_labels
-    #feed_dict[disc_model.mask_x]=train_masks
 
     feed_dict[disc_model.context] = train_inputs[:, 0, :]
     feed_dict[disc_model.response] = train_inputs[:, 1, :]
@@ -95,14 +87,9 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
 
     feed_dict[disc_model.mask_c] = train_masks[:, :, 0]
     feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
-    #import pdb; pdb.set_trace()
 
     disc_model.assign_new_batch_size(sess,len(train_inputs))
     fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
-    #state = sess.run(disc_model._initial_state)
-    #for i , (c,h) in enumerate(disc_model._initial_state):
-     #   feed_dict[c]=state[i].c
-      #  feed_dict[h]=state[i].h
     cost,accuracy,_,summary = sess.run(fetches,feed_dict)
     print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
     return accuracy
@@ -114,7 +101,7 @@ def al_train():
         initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
         with tf.variable_scope("model",reuse=None,initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
-        gen_model = gens.create_model(sess, gen_config, forward_only=True)
+        gen_model = gens.create_model(sess, gen_config)
         vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
@@ -151,11 +138,10 @@ def al_train():
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
                 dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
             dec_gen = np.reshape(dec_gen, (-1,1))
-            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only=False,
-                   up_reward=True, reward=reward, debug=True)
+            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False, reward = reward)
 
             # 5.Teacher-Forcing: Update G on (X, Y )
-            _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only=False, up_reward=False)
+            _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False)
             print("loss: ", loss)
 
         #add checkpoint
@@ -168,9 +154,7 @@ def al_train():
 def main(_):
     seed = int(time.time())
     np.random.seed(seed)  
-    # translated = data_util.translate("/Users/katie_stasaski/Desktop/guided_cost/Adversarial-Learning-for-Neural-Dialogue-Generation-in-Tensorflow/data/decoded_train.txt.answer")
-    # for t in translated:
-    #     print t
+    
     # disc_pre_train()
     #gen_pre_train()
     al_train()

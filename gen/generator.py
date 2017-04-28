@@ -59,12 +59,12 @@ def prepare_data(gen_config):
     return vocab, rev_vocab, dev_set, train_set
 
 
-def create_model(session, gen_config, forward_only):
-    """Create translation model and initialize or load parameters in session."""
+def create_model(session, gen_config):
+    """Create generation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
-      gen_config.vocab_size, gen_config.vocab_size, _buckets,
-      gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
-      gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob,forward_only=forward_only)
+                gen_config.vocab_size, gen_config.vocab_size, _buckets,
+                gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
+                gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob)
 
     ckpt = tf.train.get_checkpoint_state(gen_config.train_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
@@ -91,7 +91,7 @@ def train(gen_config):
                                for i in xrange(len(train_bucket_sizes))]
         # import pdb; pdb.set_trace()
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        model = create_model(sess, gen_config, False)
+        model = create_model(sess, gen_config)
 
 
         # This is the training loop.
@@ -114,7 +114,7 @@ def train(gen_config):
             encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
                 train_set, bucket_id, 0)
 
-            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only=False)
+            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False)
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
@@ -154,9 +154,8 @@ def train(gen_config):
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
                             beam_size, buckets, mc_search=True,debug=False):
     
-  
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, True)
+        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only = True)
         prob          = softmax(logits[dptr][0])
         return prob
 
@@ -176,7 +175,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     ### Original greedy decoding
     if beam_size == 1 or (not mc_search):
-        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True)
+        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 
     # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)

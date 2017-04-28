@@ -34,21 +34,21 @@ import cPickle as pkl
 
 
 # Special vocabulary symbols - we always put them at the start.
-_PAD = b"_PAD"
-_GO = b"_GO"
-_EOS = b"_EOS"
-_UNK = b"_UNK"
+_PAD         = b"_PAD"
+_GO          = b"_GO"
+_EOS         = b"_EOS"
+_UNK         = b"_UNK"
 _START_VOCAB = [_PAD, _GO, _EOS, _UNK]
 
-PAD_ID = 0
-UNK_ID = 1
-GO_ID = 25001
-EOS_ID = 25002
+PAD_ID  = 0
+UNK_ID  = 1
+GO_ID   = 25001
+EOS_ID  = 25002
 
 
 # Regular expressions used to tokenize.
 _WORD_SPLIT = re.compile(b"([.,!?\"':;)(])")
-_DIGIT_RE = re.compile(br"\d")
+_DIGIT_RE   = re.compile(br"\d")
 
 # URLs for WMT data.
 #_WMT_ENFR_TRAIN_URL = "http://www.statmt.org/wmt10/training-giga-fren.tar"
@@ -370,6 +370,7 @@ def decode_file(fname):
 #    pickle.dump((vset,vlabels),f)
 #  return tset, vset
 
+''' Dataset functions: '''
 
 def create_dataset(fname, is_disc=True):
 
@@ -419,10 +420,7 @@ def split_dataset(dataset, ratio = 0.9):
 
     return set1, set2
 
-
-def gen_dataset_w_false_ex(dataset):
-  
-    def gen_false_dataset(dataset, n_sent):
+def gen_false_dataset(dataset, n_sent):
     
         context, response    = [], []
 
@@ -435,6 +433,8 @@ def gen_dataset_w_false_ex(dataset):
         return context, response
 
 
+def gen_dataset_w_false_ex(dataset):
+    
     mixed_dataset = dataset.copy()
     n_sent = dataset['len']
 
@@ -466,19 +466,30 @@ def _padding(data, max_len):
     out[valid]  = np.concatenate(data)
     out         = np.delete(out, np.s_[max_len:], axis=1)
 
+    return out
+
+
+def _gen_mask(data, max_len):
+       # Get lengths of each row of data
+    lens        = np.array([len(i) for i in data])
+
+    # Mask of valid places in each row 
+    valid       = np.arange(np.append(lens,max_len).max()) < lens[:,None]
+
     mask        = np.zeros(valid.shape, dtype = np.int32)
     mask[valid] = 1
     mask        = np.delete(mask, np.s_[max_len:], axis=1)
 
-    return out, mask
+    return mask
 
 
 def dataset_padding(dataset, max_len):
 
-    dataset['context'], c_mask   = _padding(dataset['context'], max_len)
-    dataset['response'], r_mask  = _padding(dataset['response'], max_len)
-
-    dataset['c_mask'], dataset['r_mask'] = np.transpose(c_mask), np.transpose(r_mask)
+    dataset['c_mask']   = np.transpose(_gen_mask(dataset['context'], max_len))
+    dataset['context']  = _padding(dataset['context'], max_len)
+    
+    dataset['r_mask']   = np.transpose(_gen_mask(dataset['response'], max_len))
+    dataset['response'] = _padding(dataset['response'], max_len)
 
     return dataset
 
@@ -490,7 +501,7 @@ def convert_to_format(dataset):
 
 
 def set_dataset_path(path):
-    dataset_path=path
+    dataset_path = path
 
 
 def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1):

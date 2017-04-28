@@ -60,9 +60,9 @@ class Seq2SeqModel(object):
             self.b   = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
 
             if num_samples in xrange(1, self.target_vocab_size):
-                self.output_projection       = (self.w, self.b)  
+                self.output_projection  = (self.w, self.b)  
                 # Sampled softmax only makes sense if we sample less than vocabulary size.        
-                softmax_loss_function   =  sampled_loss 
+                softmax_loss_function   = sampled_loss 
             else:
                 self.output_projection  = None
                 softmax_loss_function   = policy_gradient
@@ -114,15 +114,14 @@ class Seq2SeqModel(object):
                     lambda x, y: seq2seq_f(x, y, self.forward_only),
                     softmax_loss_function = softmax_loss_function)
             
-            
-            #TODO this code is never executed:
-            # if forward_only and output_projection is not None:
-            # #If we use output projection, we need to project outputs for decoding.
-            #    for b in xrange(len(buckets)):
-            #        self.outputs[b] = [
-            #                tf.matmul(output, output_projection[0]) + output_projection[1]
-            #                for output in self.outputs[b]
-            #            ]
+           
+            #If we use output projection, we need to project outputs for decoding.
+            if output_projection is not None:
+                for b in xrange(len(buckets)):
+                    self.outputs[b] = [tf.cond(self.forward_only, 
+                                        lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
+                                        lambda : output) for output in self.outputs[b] ]
+
            
             # Gradients and SGD update operation for training the model.
             self.tvars          = tf.trainable_variables()
@@ -159,7 +158,7 @@ class Seq2SeqModel(object):
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
         input_feed = { #self.up_reward.name : up_reward,
-                      self.forward_only : forward_only,}
+                      self.forward_only.name : forward_only,}
 
         for l in xrange(len(self.buckets)):
             input_feed[self.reward[l].name] = reward if reward else 1
@@ -168,12 +167,10 @@ class Seq2SeqModel(object):
             input_feed[self.encoder_inputs[l].name] = encoder_inputs[l]
 
         for l in xrange(decoder_size):
+            input_feed[self.target_weights[l].name] = target_weights[l]           
             input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
-            input_feed[self.target_weights[l].name] = target_weights[l]
-
         # Since our targets are decoder inputs shifted by one, we need one more.
-        last_target             = self.decoder_inputs[decoder_size].name
-        input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
+        input_feed[self.decoder_inputs[decoder_size].name] = np.zeros([self.batch_size], dtype=np.int32)
 
         
         # Output feed: depends on whether we do a backward step or not.
@@ -192,11 +189,6 @@ class Seq2SeqModel(object):
         if not forward_only:
             return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
         else:
-            with tf.variable_scope(self.scope_name, reuse=True):
-                w_t = tf.get_variable("proj_w").eval()
-                b   = tf.get_variable("proj_b").eval()
-            if self.output_projection is not None:
-                outputs[2:] = np.matmul(np.squeeze(outputs[2:]), w_t.T) + b
             return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 
 

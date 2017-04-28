@@ -35,6 +35,8 @@ def read_data(dataset, max_size=None):
             break
         source_ids = dataset['context'][i]
         target_ids = dataset['response'][i]
+        #import pdb; pdb.set_trace()
+
         target_ids.append(data_utils.EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets): 
             if len(source_ids) < source_size and len(target_ids) < target_size:
@@ -73,8 +75,17 @@ def create_model(session, gen_config, forward_only):
         session.run(tf.global_variables_initializer())
     return model
 
-def softmax(x):
-    prob = np.exp(x) / np.sum(np.exp(x), axis=0)
+def softmax(x, model, size):
+    with tf.variable_scope(model.scope_name, reuse=True):
+        w_t = tf.get_variable("proj_w")
+        b = tf.get_variable("proj_b")
+    w_t = w_t.eval()
+    b = b.eval()
+    #TODO verify if needed
+    x = np.squeeze(x)
+    mid = np.matmul(x, w_t.T) + b
+
+    prob = np.exp(mid) / np.sum(np.exp(mid), axis=0)
     return prob
 
 def train(gen_config):
@@ -114,6 +125,7 @@ def train(gen_config):
             encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
                 train_set, bucket_id, 0)
 
+
             _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
                                            target_weights, bucket_id, forward_only=False)
 
@@ -122,8 +134,8 @@ def train(gen_config):
             current_step += 1
 
             if current_step % 50 == 0:
-              sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
-                                               batch_source_encoder, batch_source_decoder, mc_search=False)
+              #import pdb; pdb.set_trace()
+              sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,batch_source_encoder, batch_source_decoder, mc_search=False)
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
@@ -155,11 +167,12 @@ def train(gen_config):
                 sys.stdout.flush()
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
-                           beam_size, buckets, mc_search=True,debug=False):
+                           beam_size, buckets, mc_search=True,debug=True):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
         #model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True)
       _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, True)
-      prob = softmax(logits[dptr][0])
+        #TODO make this modular
+      prob = softmax(logits[dptr][0], model, 256)
       # print("model_step @ %s" % (datetime.now()))
       return prob
 
@@ -181,7 +194,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True)
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 
-    # Get output logits for the sentence. # initialize beams as (log_prob, empty_string, eos)
+    # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)
     beams, new_beams, results = [(1, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], []
 
     for dptr in range(len(decoder_inputs)-1):
@@ -232,7 +245,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     sample_response = []
     sample_labels =[]
     rep = []
-
+    #import pdb; pdb.set_trace()
     for source_query, source_answer in zip(source_inputs, source_outputs):
         sample_context.append(source_query)
         sample_response.append(source_answer)

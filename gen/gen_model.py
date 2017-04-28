@@ -117,8 +117,7 @@ class Seq2SeqModel(object):
                                                     name="weight{0}".format(i)))
 
         # Our targets are decoder inputs shifted by one.
-        targets = [self.decoder_inputs[i + 1]
-                   for i in xrange(len(self.decoder_inputs) - 1)]
+        targets = [self.decoder_inputs[i + 1] for i in xrange(len(self.decoder_inputs) - 1)]
 
         # Training outputs and losses.
         if forward_only:
@@ -196,6 +195,7 @@ class Seq2SeqModel(object):
     if len(target_weights) != decoder_size:
       raise ValueError("Weights length must be equal to the one in bucket,"
                        " %d != %d." % (len(target_weights), decoder_size))
+    #import pdb; pdb.set_trace()
 
     # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
     input_feed = {

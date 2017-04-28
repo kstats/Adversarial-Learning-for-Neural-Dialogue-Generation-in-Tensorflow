@@ -77,7 +77,7 @@ def create_model(session, gen_config, forward_only):
 
 
 def softmax(x):
-    return np.exp(mid) / np.sum(np.exp(x), axis=0)
+    return np.exp(x) / np.sum(np.exp(x), axis=0)
 
 
 def train(gen_config):

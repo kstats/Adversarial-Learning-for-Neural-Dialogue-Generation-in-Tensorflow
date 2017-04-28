@@ -116,7 +116,7 @@ class Seq2SeqModel(object):
             
            
             #If we use output projection, we need to project outputs for decoding.
-            if output_projection is not None:
+            if self.output_projection is not None:
                 for b in xrange(len(buckets)):
                     self.outputs[b] = [tf.cond(self.forward_only, 
                                         lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],

@@ -14,71 +14,63 @@ sys.path.append('../utils')
 
 class Seq2SeqModel(object):
 
-  def __init__(self,
-               source_vocab_size, target_vocab_size, buckets, size, num_layers, max_gradient_norm, batch_size,
-            learning_rate, learning_rate_decay_factor, keep_prob=1., use_lstm=False,num_samples=512,forward_only=False,
-               scope_name='gen_seq2seq', dtype=tf.float32):
+  def __init__(self, 
+                source_vocab_size, target_vocab_size, buckets, 
+                size, num_layers, max_gradient_norm, batch_size,
+                learning_rate, learning_rate_decay_factor, 
+                keep_prob = 1., use_lstm = False, num_samples = 512,
+                forward_only = False, scope_name = 'gen_seq2seq', 
+                dtype = tf.float32):
     
     self.scope_name = scope_name
     with tf.variable_scope(self.scope_name):
-        self.source_vocab_size = source_vocab_size
-        self.target_vocab_size = target_vocab_size
-        self.buckets = buckets
-        self.learning_rate = tf.Variable(float(learning_rate), trainable=False, dtype=dtype)
+        self.source_vocab_size      = source_vocab_size
+        self.target_vocab_size      = target_vocab_size
+        self.buckets                = buckets
+        self.learning_rate          = tf.Variable(float(learning_rate), trainable=False, dtype=dtype)
         self.learning_rate_decay_op = self.learning_rate.assign(self.learning_rate * learning_rate_decay_factor)
-        self.global_step = tf.Variable(0, trainable=False)
-        self.batch_size = batch_size
+        self.global_step            = tf.Variable(0, trainable=False)
+        self.batch_size             = batch_size
 
 
-        self.up_reward = tf.placeholder(tf.bool, name="up_reward")
-        self.en_output_proj = tf.placeholder(tf.bool, name="en_output_proj")
+        self.up_reward          = tf.placeholder(tf.bool, name="up_reward")
+        self.en_output_proj     = tf.placeholder(tf.bool, name="en_output_proj")
+        
         # If we use sampled softmax, we need an output projection.
-        output_projection = None
-        softmax_loss_function = None
+        output_projection       = None
+        softmax_loss_function   = None
         # Sampled softmax only makes sense if we sample less than vocabulary size.
 
 
         def policy_gradient(logit, labels):
-            def softmax(x):
-                #print (x.eval())
-                return tf.exp(x) / tf.reduce_sum(tf.exp(x), reduction_indices=0)
-            prob = softmax(logit)
-            #token = tf.argmax(logit, 0)
-            return tf.reduce_max(prob)
-            #pass
-        #softmax_loss_function = policy_gradient
-        #pass
+            return tf.reduce_max(tf.nn.softmax(logit, 0))
 
-        if num_samples > 0 and num_samples < self.target_vocab_size:
+        if num_samples in xrange(1, self.target_vocab_size):
+
             w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype)
-            w = tf.transpose(w_t)
-            b = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
+            w   = tf.transpose(w_t)
+            b   = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
             output_projection = (w, b)
 
             def sampled_loss(inputs, labels):
                 labels = tf.reshape(labels, [-1, 1])
                 # We need to compute the sampled_softmax_loss using 32bit floats to
                 # avoid numerical instabilities.
-                local_w_t = tf.cast(w_t, tf.float32)
-                local_b = tf.cast(b, tf.float32)
+                local_w_t    = tf.cast(w_t, tf.float32)
+                local_b      = tf.cast(b, tf.float32)
                 local_inputs = tf.cast(inputs, tf.float32)
                 return tf.cast(
-                    tf.nn.sampled_softmax_loss(weights=local_w_t, biases=local_b, labels=labels, inputs=local_inputs,
-                                               num_sampled=num_samples, num_classes=self.target_vocab_size),
-                    dtype)
+                    tf.nn.sampled_softmax_loss(weights = local_w_t, biases = local_b, labels = labels,
+                                               inputs = local_inputs, num_sampled = num_samples, 
+                                               num_classes = self.target_vocab_size), dtype)
+
             softmax_loss_function = sampled_loss
 
-        # softmax_loss_function = control_flow_ops.cond(self.up_reward,
-        #                                       lambda:policy_gradient,
-        #
-        #                                       lambda:sampled_loss)
         else:
             print ("Proceed with caution...policy gradient.")
             softmax_loss_function = policy_gradient
 
-        #loss_function = tf.select(self.up_reward, policy_gradient, softmax_loss_function)
 
-        #softmax_loss_function = loss_function
         # Create the internal multi-layer cell for our RNN.
         single_cell = tf.nn.rnn_cell.GRUCell(size)
         if use_lstm:
@@ -117,8 +109,7 @@ class Seq2SeqModel(object):
                                                     name="weight{0}".format(i)))
 
         # Our targets are decoder inputs shifted by one.
-        targets = [self.decoder_inputs[i + 1]
-                   for i in xrange(len(self.decoder_inputs) - 1)]
+        targets = [self.decoder_inputs[i + 1] for i in xrange(len(self.decoder_inputs) - 1)]
 
         # Training outputs and losses.
         if forward_only:
@@ -140,28 +131,6 @@ class Seq2SeqModel(object):
                     lambda x, y: seq2seq_f(x, y, False),
                     softmax_loss_function=softmax_loss_function)
 
-        # for j in xrange(len(buckets)):
-        #     output_seq = [int(np.argmax(logit, axis=1)) for logit in self.outputs[j]]
-        # # for reinforcement learning
-        # self.force_dec_input = tf.placeholder(tf.bool, name="force_dec_input")
-        # self.en_output_proj = tf.placeholder(tf.bool, name="en_output_proj")
-        # # Training outputs and losses.
-        # #if forward_only:
-        # self.outputs, self.losses, self.encoder_state = rl_seq2seq.model_with_buckets(
-        #       self.encoder_inputs, self.decoder_inputs, targets,
-        #       self.target_weights, buckets, lambda x, y: seq2seq_f(x, y, tf.select(self.force_dec_input, False, True)),
-        #       softmax_loss_function=softmax_loss_function)
-        #   # If we use output projection, we need to project outputs for decoding.
-        #   #if output_projection is not None:
-        # for b in xrange(len(buckets)):
-        #   self.outputs[b] = [
-        #     control_flow_ops.cond(
-        #       self.en_output_proj,
-        #       lambda: tf.matmul(output, output_projection[0]) + output_projection[1],
-        #       lambda: output
-        #     )
-        #     for output in self.outputs[b]
-        #   ]
 
         # Gradients and SGD update operation for training the model.
         self.tvars = tf.trainable_variables()
@@ -200,7 +169,7 @@ class Seq2SeqModel(object):
     # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
     input_feed = {
       self.up_reward.name:  up_reward,
-      self.en_output_proj:        (forward_only),
+      self.en_output_proj:  forward_only,
     }
     for l in xrange(len(self.buckets)):
       input_feed[self.reward[l].name] = reward if reward else 1
@@ -210,6 +179,7 @@ class Seq2SeqModel(object):
       input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
       input_feed[self.target_weights[l].name] = target_weights[l]
 
+    #import pdb; pdb.set_trace()
     # Since our targets are decoder inputs shifted by one, we need one more.
     last_target = self.decoder_inputs[decoder_size].name
     input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
@@ -223,12 +193,16 @@ class Seq2SeqModel(object):
       output_feed = [self.encoder_state[bucket_id], self.losses[bucket_id]]  # Loss for this batch.
       for l in xrange(decoder_size):  # Output logits.
         output_feed.append(self.outputs[bucket_id][l])
-
+    
     outputs = session.run(output_feed, input_feed)
     if not forward_only:
       return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
     else:
-      return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
+        with tf.variable_scope(self.scope_name, reuse=True):
+            w_t = tf.get_variable("proj_w").eval()
+            b   = tf.get_variable("proj_b").eval()
+        outputs[2:] = np.matmul(np.squeeze(outputs[2:]), w_t.T) + b
+        return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 
   def get_batch(self, train_data, bucket_id, type=0):
 

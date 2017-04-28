@@ -78,35 +78,32 @@ def softmax(x):
     return prob
 
 def train(gen_config):
-    """Train a en->fr translation model using WMT data."""
     vocab, rev_vocab, dev_set, train_set = prepare_data(gen_config)
 
     with tf.Session() as sess:
-    #with tf.device("/gpu:1"):
         # Create model.
-        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
-        train_total_size = float(sum(train_bucket_sizes))
+        train_bucket_sizes  = [len(train_set[b]) for b in xrange(len(_buckets))]
+        train_total_size    = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
         # import pdb; pdb.set_trace()
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        model = create_model(sess, gen_config,False)
+        model = create_model(sess, gen_config, False)
 
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0
-        current_step = 0
+        current_step    = 0
         previous_losses = []
 
         step_loss_summary = tf.Summary()
-        #merge = tf.merge_all_summaries()
-        writer = tf.summary.FileWriter("../logs/", sess.graph)
+        writer            = tf.summary.FileWriter("../logs/", sess.graph)
 
         while True:
             # Choose a bucket according to data distribution. We pick a random number
             # in [0, 1] and use the corresponding interval in train_buckets_scale.
             random_number_01 = np.random.random_sample()
-            bucket_id = min([i for i in xrange(len(train_buckets_scale))
+            bucket_id           = min([i for i in xrange(len(train_buckets_scale))
                            if train_buckets_scale[i] > random_number_01])
 
             # Get a batch and make a step.
@@ -114,23 +111,21 @@ def train(gen_config):
             encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
                 train_set, bucket_id, 0)
 
-            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
-                                           target_weights, bucket_id, forward_only=False)
+            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only=False)
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
             current_step += 1
 
             if current_step % 50 == 0:
+         
+                
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
-                #print("INPUT DECODED")
-                #print(du.decode_sentence(input, vocab, rev_vocab))
-                #print("OUTPUT DECODED")
-                #print(du.decode_sentence(response, vocab, rev_vocab))
+            
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 
@@ -155,17 +150,18 @@ def train(gen_config):
                 sys.stdout.flush()
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
-                           beam_size, buckets, mc_search=True,debug=False):
+                            beam_size, buckets, mc_search=True,debug=False):
+    
+  
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        #model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, True)
-      _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, True)
-      prob = softmax(logits[dptr][0])
-      # print("model_step @ %s" % (datetime.now()))
-      return prob
+        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, True)
+        prob          = softmax(logits[dptr][0])
+        return prob
 
     def greedy_dec(output_logits):
-      selected_token_ids = [int(np.argmax(logit, axis=1)) for logit in output_logits]
-      return selected_token_ids
+       # import pdb; pdb.set_trace()
+        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in output_logits]
+        return selected_token_ids
 
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
@@ -194,7 +190,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         if cand['eos']:
           results += [(prob, cand)]
           continue
-
+        
         all_prob_ts = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
         all_prob_t  = [0]*len(all_prob_ts)
         all_prob    = all_prob_ts
@@ -237,8 +233,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
-        responses = get_predicted_sentence(sess, source_query, vocab,
-                                           model, gen_config.beam_size, _buckets, mc_search)
+        responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
 
         for resp in responses:
             if gen_config.beam_size == 1 or (not mc_search):

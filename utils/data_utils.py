@@ -488,9 +488,6 @@ def convert_to_format(dataset):
                 dataset['label'], 
                 np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))   # mask is maxlen * batch * 2 [2 is ctx,response]
 
-#file path
-# dataset_path='data/training30k.txt.query.pkl'
-#dataset_path='data/subj0.pkl'
 
 def set_dataset_path(path):
     dataset_path=path
@@ -498,8 +495,6 @@ def set_dataset_path(path):
 
 def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
  
-    import pdb; pdb.set_trace()
-    #TODO change this to be dynamic
     dataset                     = create_dataset(fname)
     mixed_dataset               = gen_dataset_w_false_ex(dataset)
     #shuffle and generate train and valid dataset
@@ -514,13 +509,7 @@ def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len
     valid_set = convert_to_format(dataset_padding(valid_set, max_len))
 
     test_set = convert_to_format(dataset_padding(test_set, max_len))
-
-    #remove unknow words
-    def remove_unk(x):
-        return [[1 if w >= n_words else w for w in sen] for sen in x]
-    def len_argsort(seq):
-        return sorted(range(len(seq)), key=lambda x: len(seq[x]))
-   
+     
     return train_set,valid_set,test_set
 
 

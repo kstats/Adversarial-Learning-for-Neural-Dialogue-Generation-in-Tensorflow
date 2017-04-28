@@ -159,7 +159,6 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-       # import pdb; pdb.set_trace()
         selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in output_logits]
         return selected_token_ids
 

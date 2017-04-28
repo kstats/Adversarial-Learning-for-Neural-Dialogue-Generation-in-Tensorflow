@@ -135,6 +135,7 @@ def train(gen_config):
 
             if current_step % 50 == 0:
               #import pdb; pdb.set_trace()
+              import pdb; pdb.set_trace()
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,batch_source_encoder, batch_source_decoder, mc_search=False)
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
@@ -177,8 +178,18 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
       return prob
 
     def greedy_dec(output_logits):
-      selected_token_ids = [int(np.argmax(logit, axis=1)) for logit in output_logits]
-      return selected_token_ids
+        with tf.variable_scope(model.scope_name, reuse=True):
+            w_t = tf.get_variable("proj_w")
+            b = tf.get_variable("proj_b")
+        w_t = w_t.eval()
+        b = b.eval()
+        # TODO verify if needed
+        x = np.squeeze(output_logits)
+        mid = np.matmul(x, w_t.T) + b
+
+        prob = np.exp(mid) / np.sum(np.exp(mid), axis=0)
+        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in prob]
+        return selected_token_ids
 
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])

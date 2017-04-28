@@ -493,7 +493,7 @@ def set_dataset_path(path):
     dataset_path=path
 
 
-def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1, sort_by_len = True, debug=False):
+def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1):
  
     dataset                     = create_dataset(fname)
     mixed_dataset               = gen_dataset_w_false_ex(dataset)

@@ -121,7 +121,7 @@ def train_step(config_disc, config_evl):
     eval_config=config_evl
     eval_config.keep_prob=1.0
 
-    train_data,valid_data,test_data=data_utils.disc_load_data(fname = config.train_data_file ,  debug = True, max_len = config.max_len)
+    train_data,valid_data,test_data=data_utils.disc_load_data(fname = config.train_data_file , max_len = config.max_len)
     print("begin training")
 
     with tf.Graph().as_default(), tf.Session() as session:

@@ -164,7 +164,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
-    outputs = []
+    outputs   = []
     feed_data = {bucket_id: [(input_token_ids, outputs)]}
 
     # Get a 1-element batch to feed the sentence to the model.   None,bucket_id, True

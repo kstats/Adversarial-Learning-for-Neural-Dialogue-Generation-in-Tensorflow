@@ -26,8 +26,10 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
                                                source_inputs, source_outputs, mc_search=mc_search)
     print("disc_train_data, mc_search: ", mc_search)
     import pdb; pdb.set_trace()
+    resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
+       resp.append(response)
 
     sample_inputs = zip(sample_context, sample_response)
     def len_argsort(seq):
@@ -72,7 +74,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
         return new_set
 
     train_inputs, train_labels, train_masks =padding_and_generate_mask(train_set[0],train_set[1],
-                                                                     new_train_set_x,new_train_set_y,mask_train_x)
+                                                                     new_train_set_x,new_train_set_y,mask_train_x, resp)
     return train_inputs, train_labels, train_masks, responses
 
 # discriminator api
@@ -110,7 +112,7 @@ def al_train():
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                          if train_buckets_scale[i] > random_number_01])
-
+            import pdb; pdb.set_trace()
             print("===========================Update Discriminator================================")
             # 1.Sample (X,Y) from real data
             _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
@@ -154,8 +156,8 @@ def main(_):
     np.random.seed(seed)  
     
     # disc_pre_train()
-    gen_pre_train()
-    # al_train()
+    #gen_pre_train()
+    al_train()
 
 if __name__ == "__main__":
     tf.app.run()

@@ -103,6 +103,7 @@ def al_train():
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
         vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -116,6 +117,9 @@ def al_train():
             print("===========================Update Discriminator================================")
             # 1.Sample (X,Y) from real data
             _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
+
+            a = gens.gen_guided_sample(sess, source_inputs[0], gen_config, gen_model, vocab)
+            print (a)
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
                                                         source_inputs,source_outputs,mc_search=False)

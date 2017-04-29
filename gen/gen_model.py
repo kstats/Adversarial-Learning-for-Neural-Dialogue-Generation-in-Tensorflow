@@ -32,6 +32,7 @@ class Seq2SeqModel(object):
             self.global_step            = tf.Variable(0, trainable=False)
 
             self.forward_only           = tf.placeholder(tf.bool, name = "forward_only")
+            self.do_projection          = tf.placeholder(tf.bool, name = "do_projection")
             
             # If we use sampled softmax, we need an output projection.
             def policy_gradient(logit, labels):
@@ -83,7 +84,8 @@ class Seq2SeqModel(object):
                   cell,
                   num_encoder_symbols = source_vocab_size,
                   num_decoder_symbols = target_vocab_size,
-                  embedding_size      = size,
+                  # embedding_size      = size,
+                  embedding_size      = 128,
                   output_projection   = self.output_projection,
                   feed_previous       = do_decode,
                   dtype               = dtype)
@@ -114,9 +116,10 @@ class Seq2SeqModel(object):
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
                 for b in xrange(len(buckets)):
-                    self.outputs[b] = [tf.cond(self.forward_only, 
-                                        lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
-                                        lambda : output) for output in self.outputs[b] ]
+                    self.outputs[b] = [tf.cond(self.do_projection, 
+                                            lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
+                                            lambda : output) 
+                                        for output in self.outputs[b] ]
 
            
             # Gradients and SGD update operation for training the model.
@@ -138,7 +141,7 @@ class Seq2SeqModel(object):
 
  
     def step(self, session, encoder_inputs, decoder_inputs, target_weights,
-           bucket_id, forward_only = True, reward = None):
+           bucket_id, forward_only = True, projection = True, reward = None):
         
         # Check if the sizes match.
         encoder_size, decoder_size = self.buckets[bucket_id]
@@ -153,7 +156,8 @@ class Seq2SeqModel(object):
                            " %d != %d." % (len(target_weights), decoder_size))
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
-        input_feed = {self.forward_only.name : forward_only,}
+        input_feed = {self.forward_only.name : forward_only,
+                      self.do_projection.name: projection}
 
         for l in xrange(len(self.buckets)):
             input_feed[self.reward[l].name] = reward if reward else 1
@@ -169,20 +173,30 @@ class Seq2SeqModel(object):
 
         
         # Output feed: depends on whether we do a backward step or not.
-        if not forward_only:            # normal training
+        if not forward_only and not projection:            # normal training
             output_feed = [self.updates[bucket_id],           # Update Op that does SGD.
                            self.gradient_norms[bucket_id],    # Gradient norm.
                            self.losses[bucket_id]]            # Loss for this batch.
-        else:       # testing or reinforcement learning
+
+        elif forward_only and projection:                   # testing or reinforcement learning
             output_feed = [self.encoder_state[bucket_id], 
                            self.losses[bucket_id]]          # Loss for this batch.
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
-        
+        elif not forward_only and projection:               #We are not in feed farward but want projection 
+            output_feed = []
+            for l in xrange(decoder_size):                  # Output logits.
+                output_feed.append(self.outputs[bucket_id][l])
+        else:
+            raise ValueError("forward_only and no projection is illegal")
+
+            
         
         outputs = session.run(output_feed, input_feed)
-        if not forward_only:
+        if not forward_only and not projection:
             return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
+        elif not forward_only and projection:
+            return outputs
         else:
             return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 

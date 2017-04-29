@@ -96,6 +96,7 @@ def train(gen_config):
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0
+        moving_average_loss = 0.0
         current_step    = 0
         previous_losses = []
 
@@ -118,12 +119,15 @@ def train(gen_config):
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
+            moving_average_loss += step_loss
             current_step += 1
 
-            if current_step % 50 == 0:
+            if current_step % 150 == 0:
                 
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
+              print("Step %d loss is %f" % (model.global_step.eval(), moving_average_loss / 150))
+              moving_average_loss = 0.0
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))

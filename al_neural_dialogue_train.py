@@ -138,10 +138,10 @@ def al_train():
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
                 dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
             dec_gen = np.reshape(dec_gen, (-1,1))
-            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False, reward = reward)
+            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
 
             # 5.Teacher-Forcing: Update G on (X, Y )
-            _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False)
+            _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
             print("loss: ", loss)
 
         #add checkpoint
@@ -156,8 +156,8 @@ def main(_):
     np.random.seed(seed)  
     
     # disc_pre_train()
-    #gen_pre_train()
-    al_train()
+    gen_pre_train()
+    #al_train()
 
 if __name__ == "__main__":
     tf.app.run()

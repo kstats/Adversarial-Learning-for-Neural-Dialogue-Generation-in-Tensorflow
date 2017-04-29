@@ -28,7 +28,7 @@ class gen_config(object):
     learning_rate               = 0.5
     learning_rate_decay_factor  = 0.99
     vocab_size                  = 25003
-    keep_prob                   = 1.
+    keep_prob                   = 0.8
     size                        = 512
     num_layers                  = 1
     beam_size                   = 5

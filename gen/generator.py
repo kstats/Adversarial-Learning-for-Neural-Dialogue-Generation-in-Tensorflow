@@ -35,7 +35,7 @@ def read_data(dataset, max_size=None):
             break
         source_ids = dataset['context'][i]
         target_ids = dataset['response'][i]
-        # import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
 
         target_ids.append(data_utils.EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets):
@@ -44,16 +44,16 @@ def read_data(dataset, max_size=None):
                 break
     return data_set
 
-
 def prepare_data(gen_config):
-    train_path = os.path.join(gen_config.data_dir, gen_config.train_data_file)
-    vocab, rev_vocab = data_utils.initialize_vocabulary(gen_config.vocab_path)
 
-    dataset = data_utils.create_dataset(train_path, is_disc=False)
-    train_dataset, dev_dataset = data_utils.split_dataset(dataset, ratio=gen_config.train_ratio)
+    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
+    vocab, rev_vocab            = data_utils.initialize_vocabulary(gen_config.vocab_path)
+
+    dataset                     = data_utils.create_dataset(train_path, is_disc = False)
+    train_dataset, dev_dataset  = data_utils.split_dataset(dataset, ratio = gen_config.train_ratio )
 
     # Read data into buckets and compute their sizes.
-    print("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
+    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
     train_set, dev_set = read_data(train_dataset, gen_config.max_train_data_size), read_data(dev_dataset)
 
     return vocab, rev_vocab, dev_set, train_set
@@ -62,9 +62,9 @@ def prepare_data(gen_config):
 def create_model(session, gen_config):
     """Create generation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
-        gen_config.vocab_size, gen_config.vocab_size, _buckets,
-        gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
-        gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob)
+                gen_config.vocab_size, gen_config.vocab_size, _buckets,
+                gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
+                gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob)
 
     ckpt = tf.train.get_checkpoint_state(gen_config.train_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
@@ -73,7 +73,7 @@ def create_model(session, gen_config):
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
-        return model
+    return model
 
 
 def softmax(x):
@@ -85,60 +85,52 @@ def train(gen_config):
 
     with tf.Session() as sess:
         # Create model.
-        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
-        train_total_size = float(sum(train_bucket_sizes))
+        train_bucket_sizes  = [len(train_set[b]) for b in xrange(len(_buckets))]
+        train_total_size    = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
         # import pdb; pdb.set_trace()
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        start_time = time.time()
         model = create_model(sess, gen_config)
-        end_time = time.time()
-        print("Time to create Gen_RNN model: %.2f" % (end_time - start_time))
+
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0
         moving_average_loss = 0.0
-        current_step = 0
+        current_step    = 0
         previous_losses = []
 
         step_loss_summary = tf.Summary()
-        writer = tf.summary.FileWriter("../logs/", sess.graph)
+        writer            = tf.summary.FileWriter("../logs/", sess.graph)
 
         while True:
             # Choose a bucket according to data distribution. We pick a random number
             # in [0, 1] and use the corresponding interval in train_buckets_scale.
             random_number_01 = np.random.random_sample()
-            bucket_id = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
+            bucket_id           = min([i for i in xrange(len(train_buckets_scale))
+                           if train_buckets_scale[i] > random_number_01])
 
             # Get a batch and make a step.
             start_time = time.time()
-            # import pdb; pdb.set_trace()
-
             encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
                 train_set, bucket_id, 0)
 
-            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id,
-                                         forward_only=False)
+            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False)
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
             moving_average_loss += step_loss
             current_step += 1
 
-            if current_step % gen_config.steps_per_sample == 0:
-
-                sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
-                                                                                       batch_source_encoder,
-                                                                                       batch_source_decoder,
-                                                                                       mc_search=False)
-                print("Step %d loss is %f, learning rate is %f" % (
-                model.global_step.eval(), moving_average_loss / 150, model.learning_rate.eval()))
-                moving_average_loss = 0.0
-                print("Sampled generator:\n")
-                for input, response, label in zip(sample_context, sample_response, sample_labels):
-                    print(str(label) + "\t" + str(input) + "\t" + str(response))
-                    # sess.run(model.learning_rate_interval_op_one)
+            if current_step % 150 == 0:
+              #sess.run(model.learning_rate_decay_op_one)
+              sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
+                                               batch_source_encoder, batch_source_decoder, mc_search=False)
+              print("Step %d loss is %f, learning rate is %f" % (model.global_step.eval(), moving_average_loss / 150, model.learning_rate.eval()))
+              moving_average_loss = 0.0
+              print("Sampled generator:\n")
+              for input, response, label in zip(sample_context, sample_response, sample_labels):
+                print(str(label) + "\t" + str(input) + "\t" + str(response))
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
@@ -147,24 +139,26 @@ def train(gen_config):
                 bucket_value.tag = "loss"
                 bucket_value.simple_value = float(loss)
                 writer.add_summary(step_loss_summary, current_step)
-
+                write_steps = model.global_step.eval()
                 # Print statistics for the previous epoch.
+                lr = model.learning_rate.eval()
                 perplexity = math.exp(loss) if loss < 300 else float('inf')
-                print("global step %d learning rate %.4f step-time %.2f perplexity "
-                      "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
-                                step_time, perplexity))
+                print ("global step %d learning rate %.4f step-time %.2f perplexity "
+                       "%.6f" % (write_steps, lr,
+                                 step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
-                step_tracker = model.global_step.eval()
-
-                if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
-                    sess.run(model.learning_rate_decay_op)
+                #if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
+                 #   sess.run(model.learning_rate_decay_op)
+                if write_steps > 200000 and lr != 0.05:
+                    sess.run(model.learning_rate_decay_op_two)
+                if write_steps < 200000 and write_steps > 100000 and lr != 0.1:
+                    sess.run(model.learning_rate_decay_op_one)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")
                 model.saver.save(sess, checkpoint_path, global_step=model.global_step)
                 step_time, loss = 0.0, 0.0
                 sys.stdout.flush()
-
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
                            beam_size, buckets, mc_search=True, debug=False):
@@ -278,3 +272,5 @@ def gen_sample(sess, gen_config, model, vocab, source_inputs, source_outputs, mc
 
     return sample_context, sample_response, sample_labels, rep
     pass
+
+

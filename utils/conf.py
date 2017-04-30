@@ -24,7 +24,7 @@ class disc_config(object):
     checkpoint_every    = 10
 
 class gen_config(object):
-    batch_size                  = 1 
+    batch_size                  = 5 
     learning_rate               = 0.5
     learning_rate_decay_factor  = 0.99
     vocab_size                  = 25003

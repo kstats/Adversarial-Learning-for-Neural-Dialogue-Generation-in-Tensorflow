@@ -73,7 +73,7 @@ def create_model(session, gen_config):
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
-    return model
+        return model
 
 
 def softmax(x):
@@ -91,7 +91,10 @@ def train(gen_config):
                                for i in xrange(len(train_bucket_sizes))]
         # import pdb; pdb.set_trace()
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        model = create_model(sess, gen_config)
+        start_time  = time.time()        
+        model       = create_model(sess, gen_config)
+        end_time    = time.time()
+        print("Time to create Gen_RNN model: %.2f" % (end_time - start_time))
 
 
         # This is the training loop.
@@ -106,13 +109,13 @@ def train(gen_config):
             # Choose a bucket according to data distribution. We pick a random number
             # in [0, 1] and use the corresponding interval in train_buckets_scale.
             random_number_01 = np.random.random_sample()
-            bucket_id           = min([i for i in xrange(len(train_buckets_scale))
-                           if train_buckets_scale[i] > random_number_01])
+            bucket_id           = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
 
             # Get a batch and make a step.
             start_time = time.time()
-            encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
-                train_set, bucket_id, 0)
+            import pdb; pdb.set_trace()
+            
+            encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(train_set, bucket_id, 0)
 
             _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False)
 
@@ -120,6 +123,7 @@ def train(gen_config):
             loss += step_loss / gen_config.steps_per_checkpoint
             current_step += 1
 
+            
             if current_step % 50 == 0:
                 
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
@@ -160,8 +164,13 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-      #  import pdb; pdb.set_trace()
-        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
+        #output_logits is [max_len X batch X vocab_size] ->
+        #transpose to [batch X max_len X vocab_size]
+        selected_token_ids = []
+        for logits in np.transpose(output_logits, (1,0,2)):
+            selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
+        #import pdb; pdb.set_trace()
+            
         return selected_token_ids
 
     # Which bucket does it belong to?

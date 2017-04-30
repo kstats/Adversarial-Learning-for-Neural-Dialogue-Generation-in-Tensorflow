@@ -70,6 +70,9 @@ def create_model(session, gen_config):
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
         model.saver.restore(session, ckpt.model_checkpoint_path)
+        if gen_config.learning_rate < model.learning_rate.eval():
+          print('Re-setting learning rate to %f' % gen_config.learning_rate)
+          session.run(model.learning_rate.assign(gen_config.learning_rate),[])
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())

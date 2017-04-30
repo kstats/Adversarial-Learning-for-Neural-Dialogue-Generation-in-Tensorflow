@@ -40,5 +40,5 @@ class gen_config(object):
     train_data_file             = "training500k.txt"
     # train_data_file             = "training200k.txt"
     max_train_data_size         = 0
-    steps_per_checkpoint        = 20000
+    steps_per_checkpoint        = 8000
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

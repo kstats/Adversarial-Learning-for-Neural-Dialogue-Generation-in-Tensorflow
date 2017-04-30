@@ -146,8 +146,11 @@ def train(gen_config):
                        "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
-                if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
-                    sess.run(model.learning_rate_decay_op)
+                step_tracker = model.global_step.eval()
+                if  model.learning_rate.eval() != 0.05: #step_tracker > 200000 and
+                    sess.run(model.learning_rate_interval_op, feed_dict = {model.learning_rate_interval_op: [0.05]})
+                #if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
+                 #   sess.run(model.learning_rate_decay_op)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")
@@ -164,7 +167,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
       #  import pdb; pdb.set_trace()
         selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
         for idx in range(len(selected_token_ids) - 1):

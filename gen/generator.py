@@ -161,28 +161,29 @@ def train(gen_config):
                 sys.stdout.flush()
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
-                            beam_size, buckets, mc_search=True,debug=False):
-    
+                           beam_size, buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only = True)
-        prob          = softmax(logits[dptr][0])
+        _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only=True)
+        prob = softmax(logits[dptr][0])
         return prob
 
     def greedy_dec(output_logits):
-        import pdb; pdb.set_trace()
-      #  import pdb; pdb.set_trace()
-        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
-        for idx in range(len(selected_token_ids) - 1):
-            if idx == 0:
-                continue
-            if selected_token_ids[idx] == data_utils.EOS_ID:
-                selected_token_ids = selected_token_ids[:idx + 1]
-                break
+        # output_logits is [max_len X batch X vocab_size] ->
+        # transpose to [batch X max_len X vocab_size]
+        selected_token_ids = []
+        for logits in np.transpose(output_logits, (1, 0, 2)):
+            selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
+
+            #     import pdb; pdb.set_trace()
+        for b_id, s_t_id in enumerate(selected_token_ids):
+            eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)
+            selected_token_ids[b_id] = s_t_id if len(eos_id[0]) == 0 else s_t_id[:np.min(eos_id[0]) + 1]
+
         return selected_token_ids
 
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
-    outputs   = []
+    outputs = []
     feed_data = {bucket_id: [(input_token_ids, outputs)]}
 
     # Get a 1-element batch to feed the sentence to the model.   None,bucket_id, True
@@ -191,61 +192,64 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     ### Original greedy decoding
     if beam_size == 1 or (not mc_search):
-        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
+        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id,
+                                         forward_only=True)
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 
     # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)
-    beams, new_beams, results = [(1, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], []
+    beams, new_beams, results = [(1,
+                                  {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], []
 
-    for dptr in range(len(decoder_inputs)-1):
-      if dptr > 0:
-        target_weights[dptr] = [1.]
-        beams, new_beams = new_beams[:beam_size], []
-      if debug: print("=====[beams]=====", beams)
-      heapq.heapify(beams)  # since we will srot and remove something to keep N elements
-      for prob, cand in beams:
-        if cand['eos']:
-          results += [(prob, cand)]
-          continue
-        
-        all_prob_ts = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
-        all_prob_t  = [0]*len(all_prob_ts)
-        all_prob    = all_prob_ts
+    for dptr in range(len(decoder_inputs) - 1):
+        if dptr > 0:
+            target_weights[dptr] = [1.]
+            beams, new_beams = new_beams[:beam_size], []
+        if debug: print("=====[beams]=====", beams)
+        heapq.heapify(beams)  # since we will srot and remove something to keep N elements
+        for prob, cand in beams:
+            if cand['eos']:
+                results += [(prob, cand)]
+                continue
 
-        # suppress copy-cat (respond the same as input)
-        if dptr < len(input_token_ids):
-          all_prob[input_token_ids[dptr]] = all_prob[input_token_ids[dptr]] * 0.01
+            all_prob_ts = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
+            all_prob_t = [0] * len(all_prob_ts)
+            all_prob = all_prob_ts
 
-        # beam search
-        for c in np.argsort(all_prob)[::-1][:beam_size]:
-          new_cand = {
-            'eos'     : (c == data_utils.EOS_ID),
-            'dec_inp' : [(np.array([c]) if i == (dptr+1) else k) for i, k in enumerate(cand['dec_inp'])],
-            'prob_ts' : cand['prob_ts'] * all_prob_ts[c],
-            'prob_t'  : cand['prob_t'] * all_prob_t[c],
-            'prob'    : cand['prob'] * all_prob[c],
-          }
-          new_cand = (new_cand['prob'], new_cand) # for heapq can only sort according to list[0]
+            # suppress copy-cat (respond the same as input)
+            if dptr < len(input_token_ids):
+                all_prob[input_token_ids[dptr]] = all_prob[input_token_ids[dptr]] * 0.01
 
-          if (len(new_beams) < beam_size):
-            heapq.heappush(new_beams, new_cand)
-          elif (new_cand[0] > new_beams[0][0]):
-            heapq.heapreplace(new_beams, new_cand)
+            # beam search
+            for c in np.argsort(all_prob)[::-1][:beam_size]:
+                new_cand = {
+                    'eos': (c == data_utils.EOS_ID),
+                    'dec_inp': [(np.array([c]) if i == (dptr + 1) else k) for i, k in enumerate(cand['dec_inp'])],
+                    'prob_ts': cand['prob_ts'] * all_prob_ts[c],
+                    'prob_t': cand['prob_t'] * all_prob_t[c],
+                    'prob': cand['prob'] * all_prob[c],
+                }
+                new_cand = (new_cand['prob'], new_cand)  # for heapq can only sort according to list[0]
+
+                if (len(new_beams) < beam_size):
+                    heapq.heappush(new_beams, new_cand)
+                elif (new_cand[0] > new_beams[0][0]):
+                    heapq.heapreplace(new_beams, new_cand)
 
     results += new_beams  # flush last cands
 
     # post-process results
     res_cands = []
     for prob, cand in sorted(results, reverse=True):
-      res_cands.append(cand)
+        res_cands.append(cand)
     return res_cands
 
-def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc_search=True):
+
+def gen_sample(sess, gen_config, model, vocab, source_inputs, source_outputs, mc_search=True):
     sample_context = []
     sample_response = []
-    sample_labels =[]
+    sample_labels = []
     rep = []
-    #import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     for source_query, source_answer in zip(source_inputs, source_outputs):
         sample_context.append(source_query)
         sample_response.append(source_answer)

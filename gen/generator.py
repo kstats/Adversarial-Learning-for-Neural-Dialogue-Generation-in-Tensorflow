@@ -170,6 +170,16 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
+    #  import pdb; pdb.set_trace()
+        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
+        for idx in range(len(selected_token_ids) - 1):
+            if idx == 0:
+                continue
+            if selected_token_ids[idx] == data_utils.EOS_ID:
+                selected_token_ids = selected_token_ids[:idx + 1]
+                break
+        return selected_token_ids
+    '''def greedy_dec(output_logits):
         #output_logits is [max_len X batch X vocab_size] ->
         #transpose to [batch X max_len X vocab_size]
         selected_token_ids = []
@@ -178,7 +188,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         
         selected_token_ids = [s_t_id[:np.min(np.where(np.asarray(s_t_id) == data_utils.EOS_ID)) + 1] for s_t_id in selected_token_ids]
 
-        return selected_token_ids
+        return selected_token_ids'''
 
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])

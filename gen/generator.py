@@ -77,7 +77,7 @@ def create_model(session, gen_config):
 
 
 def softmax(x):
-    return np.exp(mid) / np.sum(np.exp(x), axis=0)
+    return np.exp(x) / np.sum(np.exp(x), axis=0)
 
 
 def train(gen_config):
@@ -99,6 +99,7 @@ def train(gen_config):
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0
+        moving_average_loss = 0.0
         current_step    = 0
         previous_losses = []
 
@@ -113,7 +114,7 @@ def train(gen_config):
 
             # Get a batch and make a step.
             start_time = time.time()
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             
             encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(train_set, bucket_id, 0)
 
@@ -121,13 +122,15 @@ def train(gen_config):
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
+            moving_average_loss += step_loss
             current_step += 1
 
-            
-            if current_step % 50 == 0:
+            if current_step % 150 == 0:
                 
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
+              print("Step %d loss is %f, learning rate is %f" % (model.global_step.eval(), moving_average_loss / 150, model.learning_rate.eval()))
+              moving_average_loss = 0.0
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
@@ -169,8 +172,11 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         selected_token_ids = []
         for logits in np.transpose(output_logits, (1,0,2)):
             selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
-        #import pdb; pdb.set_trace()
-            
+        
+        selected_token_ids = [s_t_id[:np.min(np.where(np.asarray(s_t_id) == data_utils.EOS_ID)) + 1] for s_t_id in selected_token_ids]
+
+   #     import pdb; pdb.set_trace()        
+        
         return selected_token_ids
 
     # Which bucket does it belong to?

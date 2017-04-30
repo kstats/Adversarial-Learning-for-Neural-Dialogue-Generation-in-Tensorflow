@@ -26,8 +26,10 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
                                                source_inputs, source_outputs, mc_search=mc_search)
     print("disc_train_data, mc_search: ", mc_search)
     import pdb; pdb.set_trace()
+    resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
+       resp.append(response)
 
     sample_inputs = zip(sample_context, sample_response)
     def len_argsort(seq):
@@ -38,41 +40,9 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     train_set_x = [sample_context[i] for i in sorted_index]
     train_set_y = [sample_labels[i] for i in sorted_index]
     train_set=(train_set_x,train_set_y)
-    new_train_set_x=np.zeros([len(train_set[0]),2, disc_config.max_len])
-    new_train_set_y=np.zeros(len(train_set[0]))
-    mask_train_x=np.zeros([disc_config.max_len,len(train_set[0]), 2])
 
+    train_inputs, train_labels, train_masks = data_util.convert_to_format(data_util.dataset_padding(train_set, disc_config.max_len))
 
-    def padding_and_generate_mask(x1,y1,new_x,new_y,new_mask_x, responses):
-        max_len = disc_config.max_len
-        for i,(x,y) in enumerate(zip(x1,y1)):
-            #whether to remove sentences with length larger than maxlen
-            if len(x)<=max_len:
-                new_x[i,0,0:len(x)]=x
-                new_mask_x[0:len(x),i,0]=1
-            else:
-                new_x[i][0]=(x[0:max_len])
-                new_mask_x[:,i,0]=1
-            new_y[i]=y
-        for i,(x,y) in enumerate(zip(responses,y1)):
-            #whether to remove sentences with length larger than maxlen
-            if len(x)<=max_len:
-                new_x[i,1,0:len(x)]=x
-                new_mask_x[0:len(x),i,1]=1
-            else:
-                new_x[i][1]=(x[0:max_len])
-                new_mask_x[:,i,1]=1
-            new_y[i]=y
-        for j in range(np.shape(new_mask_x)[1]):
-            for i in range(np.shape(new_mask_x)[2]):
-                if new_mask_x[0][j][i] == 0:
-                    new_mask_x[0][j][i] = 1
-        new_set =(new_x,new_y,new_mask_x)
-        del new_x,new_y
-        return new_set
-
-    train_inputs, train_labels, train_masks =padding_and_generate_mask(train_set[0],train_set[1],
-                                                                     new_train_set_x,new_train_set_y,mask_train_x)
     return train_inputs, train_labels, train_masks, responses
 
 # discriminator api
@@ -110,7 +80,7 @@ def al_train():
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                          if train_buckets_scale[i] > random_number_01])
-
+            import pdb; pdb.set_trace()
             print("===========================Update Discriminator================================")
             # 1.Sample (X,Y) from real data
             _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)

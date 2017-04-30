@@ -125,7 +125,7 @@ def train(gen_config):
             moving_average_loss += step_loss
             current_step += 1
 
-            if current_step % 150 == 0:
+            if current_step % gen_config.steps_per_sample == 0:
                 
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
@@ -170,25 +170,18 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-    #  import pdb; pdb.set_trace()
-        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
-        for idx in range(len(selected_token_ids) - 1):
-            if idx == 0:
-                continue
-            if selected_token_ids[idx] == data_utils.EOS_ID:
-                selected_token_ids = selected_token_ids[:idx + 1]
-                break
-        return selected_token_ids
-    '''def greedy_dec(output_logits):
         #output_logits is [max_len X batch X vocab_size] ->
         #transpose to [batch X max_len X vocab_size]
         selected_token_ids = []
         for logits in np.transpose(output_logits, (1,0,2)):
             selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
         
-        selected_token_ids = [s_t_id[:np.min(np.where(np.asarray(s_t_id) == data_utils.EOS_ID)) + 1] for s_t_id in selected_token_ids]
+   #     import pdb; pdb.set_trace()
+        for b_id, s_t_id in enumerate(selected_token_ids):
+            eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
+            selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 
 
-        return selected_token_ids'''
+        return selected_token_ids
 
     # Which bucket does it belong to?
     bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])

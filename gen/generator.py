@@ -134,7 +134,8 @@ def train(gen_config):
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
-            
+              #sess.run(model.learning_rate_interval_op_one)
+
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 
@@ -149,6 +150,8 @@ def train(gen_config):
                        "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
+                step_tracker = model.global_step.eval()
+
                 if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
                     sess.run(model.learning_rate_decay_op)
                 previous_losses.append(loss)
@@ -175,8 +178,6 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         
         selected_token_ids = [s_t_id[:np.min(np.where(np.asarray(s_t_id) == data_utils.EOS_ID)) + 1] for s_t_id in selected_token_ids]
 
-   #     import pdb; pdb.set_trace()        
-        
         return selected_token_ids
 
     # Which bucket does it belong to?

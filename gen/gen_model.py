@@ -28,7 +28,11 @@ class Seq2SeqModel(object):
             self.batch_size             = batch_size            
             
             self.learning_rate          = tf.Variable(float(learning_rate), trainable=False, dtype=dtype)
-            self.learning_rate_decay_op = self.learning_rate.assign(self.learning_rate * learning_rate_decay_factor)
+            self.learning_rate_decay_op_1 = self.learning_rate.assign(0.05)
+
+            self.new_rate = tf.placeholder("float", [1])
+            self.learning_rate_interval_op = self.learning_rate.assign(self.new_rate[0])
+
             self.global_step            = tf.Variable(0, trainable=False)
 
             self.forward_only           = tf.placeholder(tf.bool, name = "forward_only")

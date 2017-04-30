@@ -155,6 +155,31 @@ def train(gen_config):
                 step_time, loss = 0.0, 0.0
                 sys.stdout.flush()
 
+def calculate_density(sess, input_token_ids, output_token_ids, vocab, model,
+                            beam_size, buckets, mc_search=True,debug=False):
+    
+    def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
+        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only = True)
+        prob          = softmax(logits[dptr][0])
+        return prob
+
+    def greedy_dec(output_logits):
+      #  import pdb; pdb.set_trace()
+        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
+        return selected_token_ids
+
+    # Which bucket does it belong to?
+    bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])    
+    feed_data = {bucket_id: [(input_token_ids, output_token_ids)]}
+
+    # Get a 1-element batch to feed the sentence to the model.   None,bucket_id, True
+    encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
+    import pdb; pdb.set_trace()
+    q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
+    return q
+
+
+
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
                             beam_size, buckets, mc_search=True,debug=False):
     
@@ -178,6 +203,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     if debug: print("\n[get_batch]\n", encoder_inputs, decoder_inputs, target_weights)
 
     ### Original greedy decoding
+    import pdb; pdb.set_trace()
     if beam_size == 1 or (not mc_search):
         _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
@@ -238,6 +264,8 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
+        import pdb; pdb.set_trace()
+        q = calculate_density(sess, source_query, source_answer, vocab, model, gen_config.beam_size, _buckets, mc_search)
         responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
 
         for resp in responses:

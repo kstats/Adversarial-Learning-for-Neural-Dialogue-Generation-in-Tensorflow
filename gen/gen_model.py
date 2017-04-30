@@ -33,6 +33,7 @@ class Seq2SeqModel(object):
 
             self.forward_only           = tf.placeholder(tf.bool, name = "forward_only")
             self.do_projection          = tf.placeholder(tf.bool, name = "do_projection")
+            self.tf_bucket_id           = tf.placeholder(tf.int32, name = "tf_bucket_id")
             
             # If we use sampled softmax, we need an output projection.
             def policy_gradient(logit, labels):
@@ -114,12 +115,28 @@ class Seq2SeqModel(object):
             
            
             #If we use output projection, we need to project outputs for decoding.
+            self.output_q = []
             if self.output_projection is not None:
                 for b in xrange(len(buckets)):
                     self.outputs[b] = [tf.cond(self.do_projection, 
                                             lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
                                             lambda : output) 
                                         for output in self.outputs[b] ]
+                    # adjusted_output = tf.identity(self.outputs[b])
+                    # adjusted_output[:,:,0] = tf.ones(adjusted_output.get_shape()[:2])
+
+                    blen = buckets[b][1]
+                    inps = tf.pack(self.decoder_inputs[:blen])
+                    self.output_q.append(tf.ones(batch_size,dtype=tf.float32))
+                    for i in xrange(blen):                      
+                      ind = inps[i,:]                           
+                      ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
+                      prob = tf.gather_nd(self.outputs[b][i],ind)
+                      pads = tf.equal(self.decoder_inputs[i],data_utils.PAD_ID)
+                      prob = tf.select(pads,tf.ones(batch_size),prob)
+                      self.output_q[b] = self.output_q[b] * prob
+
+            self.q = tf.pack(self.output_q)[self.tf_bucket_id]
 
            
             # Gradients and SGD update operation for training the model.
@@ -157,7 +174,8 @@ class Seq2SeqModel(object):
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
         input_feed = {self.forward_only.name : forward_only,
-                      self.do_projection.name: projection}
+                      self.do_projection.name: projection,
+                      self.tf_bucket_id: bucket_id}
 
         for l in xrange(len(self.buckets)):
             input_feed[self.reward[l].name] = reward if reward else 1
@@ -184,7 +202,8 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif not forward_only and projection:               #We are not in feed farward but want projection 
-            output_feed = []
+            output_feed = [self.q]
+            import pdb; pdb.set_trace()
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         else:
@@ -196,7 +215,7 @@ class Seq2SeqModel(object):
         if not forward_only and not projection:
             return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
         elif not forward_only and projection:
-            return outputs
+            return outputs[0], outputs[1:]
         else:
             return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 

@@ -83,7 +83,8 @@ class Seq2SeqModel(object):
                   cell,
                   num_encoder_symbols = source_vocab_size,
                   num_decoder_symbols = target_vocab_size,
-                  embedding_size      = size,
+                  # embedding_size      = size,
+                  embedding_size      = 128,
                   output_projection   = self.output_projection,
                   feed_previous       = do_decode,
                   dtype               = dtype)

@@ -154,8 +154,12 @@ def train(gen_config):
                 step_tracker = model.global_step.eval()
 
                 if write_steps > 200000 and lr != 0.05:
-                    sess.run( model.learning_rate_decay_op_two)
-                if write_steps < 200000 and write_steps > 100000 and lr != 0.1:
+                    sess.run(model.learning_rate_decay_op_four)
+                if write_steps < 200000 and write_steps > 150000 and lr != 0.1:
+                    sess.run(model.learning_rate_decay_op_three)
+                if write_steps < 150000 and write_steps > 100000 and lr != 0.2:
+                    sess.run(model.learning_rate_decay_op_two)
+                if write_steps < 100000 and write_steps > 50000 and lr != 0.4:
                     sess.run(model.learning_rate_decay_op_one)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.

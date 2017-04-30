@@ -143,17 +143,20 @@ def train(gen_config):
                 bucket_value.tag = "loss"
                 bucket_value.simple_value = float(loss)
                 writer.add_summary(step_loss_summary, current_step)
-
+                write_steps = model.global_step.eval()
+                lr = model.learning_rate.eval()
                 # Print statistics for the previous epoch.
                 perplexity = math.exp(loss) if loss < 300 else float('inf')
                 print ("global step %d learning rate %.4f step-time %.2f perplexity "
-                       "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
+                       "%.6f" % (write_steps, lr,
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
                 step_tracker = model.global_step.eval()
 
-                if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
-                    sess.run(model.learning_rate_decay_op)
+                if write_steps > 200000 and lr != 0.05:
+                    sess.run( model.learning_rate_decay_op_two)
+                if write_steps < 200000 and write_steps > 100000 and lr != 0.1:
+                    sess.run(model.learning_rate_decay_op_one)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")

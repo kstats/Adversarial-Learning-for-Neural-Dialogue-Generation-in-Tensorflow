@@ -33,7 +33,9 @@ class Seq2SeqModel(object):
             self.learning_rate_decay_op_1 = self.learning_rate.assign(0.05)
 
             self.new_rate = tf.placeholder("float", [1])
-            self.learning_rate_interval_op = self.learning_rate.assign(self.new_rate[0])
+            #self.learning_rate_interval_op = self.learning_rate.assign(self.new_rate[0])
+            self.learning_rate_decay_op_one = self.learning_rate.assign(0.05)
+            self.learning_rate_decay_op_two = self.learning_rate.assign(0.1)
 
             self.global_step            = tf.Variable(0, trainable=False)
 

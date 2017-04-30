@@ -123,7 +123,7 @@ def train(gen_config):
             current_step += 1
 
             if current_step % 150 == 0:
-                
+              #sess.run(model.learning_rate_decay_op_one)
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
               print("Step %d loss is %f, learning rate is %f" % (model.global_step.eval(), moving_average_loss / 150, model.learning_rate.eval()))
@@ -139,15 +139,20 @@ def train(gen_config):
                 bucket_value.tag = "loss"
                 bucket_value.simple_value = float(loss)
                 writer.add_summary(step_loss_summary, current_step)
-
+                write_steps = model.global_step.eval()
                 # Print statistics for the previous epoch.
+                lr = model.learning_rate.eval()
                 perplexity = math.exp(loss) if loss < 300 else float('inf')
                 print ("global step %d learning rate %.4f step-time %.2f perplexity "
-                       "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
+                       "%.6f" % (write_steps, lr,
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
-                if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
-                    sess.run(model.learning_rate_decay_op)
+                #if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
+                 #   sess.run(model.learning_rate_decay_op)
+                if write_steps > 200000 and lr != 0.05:
+                    sess.run(model.learning_rate_decay_op_two)
+                if write_steps < 200000 and write_steps > 100000 and lr != 0.1:
+                    sess.run(model.learning_rate_decay_op_one)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")

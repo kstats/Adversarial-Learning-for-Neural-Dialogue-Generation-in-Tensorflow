@@ -30,6 +30,9 @@ class Seq2SeqModel(object):
             self.learning_rate          = tf.Variable(float(learning_rate), trainable=False, dtype=dtype)
             self.learning_rate_decay_op = self.learning_rate.assign(self.learning_rate * learning_rate_decay_factor)
             self.global_step            = tf.Variable(0, trainable=False)
+            self.learning_rate_decay_op_one = self.learning_rate.assign(0.05)
+            self.learning_rate_decay_op_two = self.learning_rate.assign(0.1)
+
 
             self.forward_only           = tf.placeholder(tf.bool, name = "forward_only")
             

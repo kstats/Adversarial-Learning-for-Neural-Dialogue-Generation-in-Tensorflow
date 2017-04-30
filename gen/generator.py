@@ -131,7 +131,8 @@ def train(gen_config):
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
-            
+              #sess.run(model.learning_rate_interval_op_one)
+
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 
@@ -147,10 +148,9 @@ def train(gen_config):
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
                 step_tracker = model.global_step.eval()
-                if  model.learning_rate.eval() != 0.05: #step_tracker > 200000 and
-                    sess.run(model.learning_rate_interval_op, feed_dict = {model.learning_rate_interval_op: [0.05]})
-                #if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
-                 #   sess.run(model.learning_rate_decay_op)
+
+                if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
+                    sess.run(model.learning_rate_decay_op)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.
                 checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")

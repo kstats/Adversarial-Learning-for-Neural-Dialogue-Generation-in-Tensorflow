@@ -160,8 +160,15 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
+        import pdb; pdb.set_trace()
       #  import pdb; pdb.set_trace()
         selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
+        for idx in range(len(selected_token_ids) - 1):
+            if idx == 0:
+                continue
+            if selected_token_ids[idx] == data_utils.EOS_ID:
+                selected_token_ids = selected_token_ids[:idx + 1]
+                break
         return selected_token_ids
 
     # Which bucket does it belong to?

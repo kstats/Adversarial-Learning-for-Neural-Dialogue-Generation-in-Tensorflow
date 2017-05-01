@@ -12,9 +12,7 @@ gen_config  = conf.gen_config
 disc_config = conf.disc_config
 evl_config  = conf.disc_config
 
-# pre train discriminator
-def disc_pre_train():
-    discs.train_step(disc_config, evl_config)
+
 
 # pre train generator
 def gen_pre_train():
@@ -25,7 +23,13 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                source_inputs, source_outputs, mc_search=mc_search)
     print("disc_train_data, mc_search: ", mc_search)
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
+    dataset = {}
+    dataset['context'] = source_inputs
+    dataset['response'] = source_outputs
+    dataset['label'] = np.array([1] * len(source_inputs))
+    dataset['len'] = len(source_inputs)
+    dataset['is_disc'] = True
     resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
@@ -35,13 +39,13 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     def len_argsort(seq):
         return sorted(range(len(seq)), key=lambda x: len(seq[x]))
     sorted_index = len_argsort(sample_inputs)
-    train_set_x = []
+    '''train_set_x = []
     train_set_y = []
     train_set_x = [sample_context[i] for i in sorted_index]
     train_set_y = [sample_labels[i] for i in sorted_index]
-    train_set=(train_set_x,train_set_y)
+    train_set=(train_set_x,train_set_y)'''
 
-    train_inputs, train_labels, train_masks = data_util.convert_to_format(data_util.dataset_padding(train_set, disc_config.max_len))
+    train_inputs, train_labels, train_masks = data_util.convert_to_format(data_util.dataset_padding(dataset, disc_config.max_len))
 
     return train_inputs, train_labels, train_masks, responses
 
@@ -62,6 +66,41 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
     print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
     return accuracy
 
+
+# pre train discriminator
+def disc_pre_train():
+    gen_config.batch_size = 1
+    with tf.Session() as sess:
+        initializer = tf.random_uniform_initializer(-1 * disc_config.init_scale, 1 * disc_config.init_scale)
+        with tf.variable_scope("model", reuse=None, initializer=initializer):
+            disc_model = discs.create_model(sess, disc_config, is_training=True)
+        gen_model = gens.create_model(sess, gen_config)
+        #import pdb; pdb.set_trace()
+        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
+        train_total_size = float(sum(train_bucket_sizes))
+        train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
+                               for i in xrange(len(train_bucket_sizes))]
+
+        while True:
+            random_number_01 = np.random.random_sample()
+            bucket_id = min([i for i in xrange(len(train_buckets_scale))
+                             if train_buckets_scale[i] > random_number_01])
+            #import pdb;
+            #pdb.set_trace()
+            print("===========================Update Discriminator================================")
+            # 1.Sample (X,Y) from real data
+
+            # import pdb; pdb.set_trace()
+
+            _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
+            # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
+            train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
+                                                                         source_inputs, source_outputs, mc_search=False)
+            # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
+            disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+
+
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
     gen_config.batch_size = 1
@@ -80,7 +119,7 @@ def al_train():
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                          if train_buckets_scale[i] > random_number_01])
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             print("===========================Update Discriminator================================")
             # 1.Sample (X,Y) from real data
             _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
@@ -123,9 +162,9 @@ def main(_):
     seed = int(time.time())
     np.random.seed(seed)  
     
-    # disc_pre_train()
-    gen_pre_train()
-    # al_train()
+    #disc_pre_train()
+    #gen_pre_train()
+    al_train()
 
 if __name__ == "__main__":
     tf.app.run()

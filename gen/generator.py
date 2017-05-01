@@ -69,10 +69,12 @@ def create_model(session, gen_config):
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
         model.saver.restore(session, ckpt.model_checkpoint_path)
+        if gen_config.learning_rate < model.learning_rate.eval():
+          print('Re-setting learning rate to %f' % gen_config.learning_rate)
+          session.run(model.learning_rate.assign(gen_config.learning_rate),[])
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
-    return model
 
 
 def softmax(x):
@@ -89,7 +91,10 @@ def train(gen_config):
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        model = create_model(sess, gen_config)
+        start_time  = time.time()        
+        model       = create_model(sess, gen_config)
+        end_time    = time.time()
+        print("Time to create Gen_RNN model: %.2f" % (end_time - start_time))
 
 
         # This is the training loop.
@@ -105,22 +110,22 @@ def train(gen_config):
             # Choose a bucket according to data distribution. We pick a random number
             # in [0, 1] and use the corresponding interval in train_buckets_scale.
             random_number_01 = np.random.random_sample()
-            bucket_id           = min([i for i in xrange(len(train_buckets_scale))
-                           if train_buckets_scale[i] > random_number_01])
+            bucket_id           = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
 
             # Get a batch and make a step.
             start_time = time.time()
-            encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
-                train_set, bucket_id, 0)
+            #import pdb; pdb.set_trace()
+            
+            encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(train_set, bucket_id, 0)
 
-            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection = False)
+            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False)
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
             moving_average_loss += step_loss
             current_step += 1
 
-            if current_step % 150 == 0:
+            if current_step % gen_config.steps_per_sample == 0:
                 
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
@@ -144,6 +149,8 @@ def train(gen_config):
                        "%.6f" % (model.global_step.eval(), model.learning_rate.eval(),
                                  step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
+                step_tracker = model.global_step.eval()
+
                 if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
                     sess.run(model.learning_rate_decay_op)
                 previous_losses.append(loss)
@@ -152,29 +159,6 @@ def train(gen_config):
                 model.saver.save(sess, checkpoint_path, global_step=model.global_step)
                 step_time, loss = 0.0, 0.0
                 sys.stdout.flush()
-
-def calculate_density(sess, input_token_ids, output_token_ids, vocab, model,
-                            beam_size, buckets, mc_search=True,debug=False):
-    
-    def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only = True)
-        prob          = softmax(logits[dptr][0])
-        return prob
-
-    def greedy_dec(output_logits):
-        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
-        return selected_token_ids
-
-    # Which bucket does it belong to?
-    bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])    
-    feed_data = {bucket_id: [(input_token_ids, output_token_ids)]}
-
-    # Get a 1-element batch to feed the sentence to the model.   None,bucket_id, True
-    encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
-    q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
-    return q
-
-
 
 def get_predicted_sentence(sess, input_token_ids, vocab, model,
                             beam_size, buckets, mc_search=True,debug=False):
@@ -186,6 +170,17 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     def greedy_dec(output_logits):
         selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
+        #output_logits is [max_len X batch X vocab_size] ->
+        #transpose to [batch X max_len X vocab_size]
+        selected_token_ids = []
+        for logits in np.transpose(output_logits, (1,0,2)):
+            selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
+        
+   #     import pdb; pdb.set_trace()
+        for b_id, s_t_id in enumerate(selected_token_ids):
+            eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
+            selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 
+
         return selected_token_ids
 
     # Which bucket does it belong to?
@@ -257,7 +252,6 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
-        q = calculate_density(sess, source_query, source_answer, vocab, model, gen_config.beam_size, _buckets, mc_search)
         responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
 
         for resp in responses:

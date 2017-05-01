@@ -68,7 +68,6 @@ class disc_rnn_model(object):
                 """
 
                 batch_range = tf.range(tf.shape(data)[0])
-                # import pdb; pdb.set_trace()
                 indices = tf.stack([batch_range, ind], axis=1)
                 res = tf.gather_nd(data, indices)
 
@@ -87,7 +86,6 @@ class disc_rnn_model(object):
                 self.out_put2_test, state = tf.nn.dynamic_rnn(cell2, response_inputs, sequence_length = self.mask_r_len, initial_state = self._initial_state)
                 self.out_put2 = self.out_put2_test[:,-1,:]
                 self.output2 = extract_axis_1(self.out_put2_test,self.mask_r_len-1)
-                #import pdb; pdb.set_trace()
                 out_put2 = self.output2
 
             if not isLstm:

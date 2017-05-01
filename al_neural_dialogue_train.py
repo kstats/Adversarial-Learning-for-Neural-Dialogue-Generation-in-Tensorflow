@@ -1,5 +1,4 @@
 import os
-import pdb
 import tensorflow as tf
 import numpy as np
 import time
@@ -25,7 +24,6 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, mc_se
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                source_inputs, source_outputs, mc_search=mc_search)
     print("disc_train_data, mc_search: ", mc_search)
-    import pdb; pdb.set_trace()
     resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
@@ -113,7 +111,6 @@ def al_train():
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                          if train_buckets_scale[i] > random_number_01])
-            import pdb; pdb.set_trace()
             print("===========================Update Discriminator================================")
             # 1.Sample (X,Y) from real data
             _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)

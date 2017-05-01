@@ -115,7 +115,6 @@ class Seq2SeqModel(object):
             
            
             #If we use output projection, we need to project outputs for decoding.
-            self.output_q = []
             if self.output_projection is not None:
                 for b in xrange(len(buckets)):
                     self.outputs[b] = [tf.cond(self.do_projection, 
@@ -124,19 +123,42 @@ class Seq2SeqModel(object):
                                         for output in self.outputs[b] ]
                     # adjusted_output = tf.identity(self.outputs[b])
                     # adjusted_output[:,:,0] = tf.ones(adjusted_output.get_shape()[:2])
+            
+            self.output_q = []
 
+                    blen = buckets[b_id][1]                    
+                    out_T = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
+
+                    inps = tf.pack(self.decoder_inputs[:blen])
+                    
+                    batch_size  = tf.shape(inps)[1]
+                    max_len_dim = tf.tile(tf.expand_dims(tf.range(blen), 1), [1, batch_size])
+                    batch_dim   = tf.transpose(tf.tile(tf.expand_dims(tf.range(batch_size), 1), [1, blen]))
+                    indices     = tf.stack([batch_dim, max_len_dim, inps], axis=2)
+
+                    pads        = tf.equal(inps, data_utils.PAD_ID)
+
+                    prob        = tf.gather_nd(out_T, indices)
+                    prob        = tf.select(pads,tf.ones(tf.shape(prob)), prob)
+                    out_q       = tf.reduce_prod(prob, axis = 0)
+                    
+                    self.output_q.append(out_q)
+
+
+                    '''
                     blen = buckets[b][1]
                     inps = tf.pack(self.decoder_inputs[:blen])
                     self.output_q.append(tf.ones(batch_size,dtype=tf.float32))
                     for i in xrange(blen):                      
-                      ind = inps[i,:]                           
-                      ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
-                      prob = tf.gather_nd(self.outputs[b][i],ind)
-                      pads = tf.equal(self.decoder_inputs[i],data_utils.PAD_ID)
-                      prob = tf.select(pads,tf.ones(batch_size),prob)
-                      self.output_q[b] = self.output_q[b] * prob
-
-            self.q = tf.pack(self.output_q)[self.tf_bucket_id]
+                        ind = inps[i,:]                           
+                        ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
+                        prob = tf.gather_nd(self.outputs[b][i],ind)
+                        pads = tf.equal(self.decoder_inputs[i],data_utils.PAD_ID)
+                        prob = tf.select(pads,tf.ones(batch_size),prob)
+                        self.output_q[b] = self.output_q[b] * prob
+                    '''
+            
+            #self.q = tf.pack(self.output_q)[self.tf_bucket_id]
 
            
             # Gradients and SGD update operation for training the model.
@@ -201,16 +223,14 @@ class Seq2SeqModel(object):
                            self.losses[bucket_id]]          # Loss for this batch.
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
-        elif not forward_only and projection:               #We are not in feed farward but want projection 
+        elif not forward_only and projection:               #We are not in feed farward but want projection
+            import pdb; pdb.set_trace()            
             output_feed = [self.q]
-            import pdb; pdb.set_trace()
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         else:
             raise ValueError("forward_only and no projection is illegal")
-
             
-        
         outputs = session.run(output_feed, input_feed)
         if not forward_only and not projection:
             return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.

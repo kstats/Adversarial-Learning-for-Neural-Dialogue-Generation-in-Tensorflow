@@ -35,7 +35,6 @@ def read_data(dataset, max_size=None):
             break
         source_ids = dataset['context'][i]
         target_ids = dataset['response'][i]
-        #import pdb; pdb.set_trace()
 
         target_ids.append(data_utils.EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets): 
@@ -89,7 +88,6 @@ def train(gen_config):
         train_total_size    = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
-        # import pdb; pdb.set_trace()
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
         model = create_model(sess, gen_config)
 
@@ -164,7 +162,6 @@ def calculate_density(sess, input_token_ids, output_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-      #  import pdb; pdb.set_trace()
         selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
         return selected_token_ids
 
@@ -174,7 +171,6 @@ def calculate_density(sess, input_token_ids, output_token_ids, vocab, model,
 
     # Get a 1-element batch to feed the sentence to the model.   None,bucket_id, True
     encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
-    import pdb; pdb.set_trace()
     q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
     return q
 
@@ -189,7 +185,6 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-      #  import pdb; pdb.set_trace()
         selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
         return selected_token_ids
 
@@ -203,7 +198,6 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     if debug: print("\n[get_batch]\n", encoder_inputs, decoder_inputs, target_weights)
 
     ### Original greedy decoding
-    import pdb; pdb.set_trace()
     if beam_size == 1 or (not mc_search):
         _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
@@ -259,12 +253,10 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     sample_response = []
     sample_labels =[]
     rep = []
-    #import pdb; pdb.set_trace()
     for source_query, source_answer in zip(source_inputs, source_outputs):
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
-        import pdb; pdb.set_trace()
         q = calculate_density(sess, source_query, source_answer, vocab, model, gen_config.beam_size, _buckets, mc_search)
         responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
 

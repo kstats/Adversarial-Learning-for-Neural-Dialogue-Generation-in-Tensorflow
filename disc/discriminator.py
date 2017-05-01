@@ -8,7 +8,6 @@ import utils.data_utils as data_utils
 import utils.conf as conf
 import sys
 sys.path.append('../utils')
-import pdb
 
 
 def optimistic_restore(session, save_file):
@@ -97,7 +96,6 @@ def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size
         # print 'Printing grads!!\n\n\n'
         # print(grads)
 
-        # import pdb; pdb.set_trace()
 
         #print (logits)
         #print (tf.argmax(logits,1))

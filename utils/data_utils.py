@@ -331,7 +331,6 @@ def translate(data_path):
         sent += reverse[int(token) - 1] + " "
       sentences.append(sent)
       #print(sent)
-      #import pdb; pdb.set_trace()
   return sentences
 
 def decode_sentence(sent, vocab, reverse):

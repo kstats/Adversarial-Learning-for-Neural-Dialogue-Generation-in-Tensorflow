@@ -141,7 +141,7 @@ class disc_rnn_model(object):
                 return
 
             self.global_step = tf.Variable(0,name="global_step",trainable=False)
-            self.lr = tf.Variable(0.0,trainable=False)
+            self.lr = tf.Variable(config.lr,trainable=False)
 
             tvars = tf.trainable_variables()
             self.tvars = tvars

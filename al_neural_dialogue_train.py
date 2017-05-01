@@ -81,14 +81,19 @@ def disc_pre_train():
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
+        checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))
+        checkpoint_prefix = os.path.join(checkpoint_dir, "disc.model")
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
 
         while True:
+            gstep = disc_model.global_step.eval()
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                              if train_buckets_scale[i] > random_number_01])
             #import pdb;
             #pdb.set_trace()
-            print("===========================Update Discriminator================================")
+            print("========lr=%f==============Update Discriminator step %d=======================" % (disc_model.lr.eval(),gstep))
             # 1.Sample (X,Y) from real data
 
             # import pdb; pdb.set_trace()
@@ -100,6 +105,11 @@ def disc_pre_train():
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 
+            if gstep > 0 and gstep % 600 == 0:
+                sess.run(disc_model.lr.assign(disc_model.lr.eval()*0.6),[])
+            if gstep > 0 and gstep % 1000 == 0:
+                path = disc_model.saver.save(sess,checkpoint_prefix,global_step=disc_model.global_step)
+                print("Saved model chechpoint to{}\n".format(path))
 
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
@@ -162,7 +172,7 @@ def main(_):
     seed = int(time.time())
     np.random.seed(seed)  
     
-    #disc_pre_train()
+    # disc_pre_train()
     #gen_pre_train()
     al_train()
 

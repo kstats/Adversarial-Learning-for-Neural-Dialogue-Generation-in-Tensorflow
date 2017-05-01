@@ -75,6 +75,8 @@ def create_model(session, gen_config):
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
+    
+    return model
 
 
 def softmax(x):
@@ -110,7 +112,7 @@ def train(gen_config):
             # Choose a bucket according to data distribution. We pick a random number
             # in [0, 1] and use the corresponding interval in train_buckets_scale.
             random_number_01 = np.random.random_sample()
-            bucket_id           = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
+            bucket_id        = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
 
             # Get a batch and make a step.
             start_time = time.time()
@@ -169,14 +171,12 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         return prob
 
     def greedy_dec(output_logits):
-        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
         #output_logits is [max_len X batch X vocab_size] ->
         #transpose to [batch X max_len X vocab_size]
         selected_token_ids = []
         for logits in np.transpose(output_logits, (1,0,2)):
             selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
         
-   #     import pdb; pdb.set_trace()
         for b_id, s_t_id in enumerate(selected_token_ids):
             eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
             selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 

@@ -24,7 +24,7 @@ class disc_config(object):
     checkpoint_every    = 10
 
 class gen_config(object):
-    batch_size                  = 1 
+    batch_size                  = 5 
     learning_rate               = 0.5
     learning_rate_decay_factor  = 0.99
     vocab_size                  = 25003
@@ -40,5 +40,6 @@ class gen_config(object):
     train_data_file             = "training20.txt"
     # train_data_file             = "training200k.txt"
     max_train_data_size         = 0
-    steps_per_checkpoint        = 20000
+    steps_per_checkpoint        = 8000
+    steps_per_sample            = 50
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

@@ -75,7 +75,6 @@ def create_model(session, gen_config):
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
-    
     return model
 
 
@@ -136,7 +135,8 @@ def train(gen_config):
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):
                 print(str(label) + "\t" + str(input) + "\t" + str(response))
-            
+              #sess.run(model.learning_rate_interval_op_one)
+
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % gen_config.steps_per_checkpoint == 0:
 

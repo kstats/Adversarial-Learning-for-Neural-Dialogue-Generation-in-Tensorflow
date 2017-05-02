@@ -19,10 +19,10 @@ def gen_pre_train():
     gens.train(gen_config)
 
 # prepare data for discriminator and generator
-def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False):
+def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                gen_inputs, gen_outputs, mc_search=mc_search)
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
 
     print("disc_train_data, mc_search: ", mc_search)
     rem_set = []
@@ -36,18 +36,33 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         del sample_labels[elem]
         del responses[elem]
 
-    dataset = {}
-    dataset['context'] = source_inputs
-    for context in sample_context:
-        dataset['context'].append(context)
-    dataset['response'] = source_outputs
-    for resp in sample_response:
-        dataset['response'].append(resp[0])
-    dataset['label'] = np.array([1] * (len(source_inputs)-1))
-    for i in range(len(sample_response)):
-        dataset['label'] = np.append(dataset['label'], 0)
-    dataset['len'] = (len(source_inputs)-1) + len(sample_context)
-    dataset['is_disc'] = True
+    if isDisc:
+        dataset = {}
+        dataset['context'] = source_inputs
+        for context in sample_context:
+            dataset['context'].append(context)
+        dataset['response'] = source_outputs
+        for resp in sample_response:
+            dataset['response'].append(resp[0])
+        dataset['label'] = np.array([1] * (len(source_inputs)-1))
+        for i in range(len(sample_response)):
+            dataset['label'] = np.append(dataset['label'], 0)
+        dataset['len'] = (len(source_inputs)-1) + len(sample_context)
+        dataset['is_disc'] = True
+
+    else:
+        dataset = {}
+        dataset['context'] = []
+        for context in sample_context:
+            dataset['context'].append(context)
+        dataset['response'] = []
+        for resp in sample_response:
+            dataset['response'].append(resp)
+        dataset['label'] = np.array([1] * (len(source_inputs) - 1))
+        for i in range(len(sample_response)):
+            dataset['label'] = np.append(dataset['label'], 0)
+        dataset['len'] = len(sample_context)
+        dataset['is_disc'] = True
     '''resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
@@ -123,7 +138,7 @@ def disc_pre_train():
             _, _, _, gen_inputs, gen_outputs = gen_model.get_batch(train_set, bucket_id, 0)
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
-                                                                         source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False)
+                                                                         source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 
@@ -186,7 +201,7 @@ def al_train():
             _, _, _, gen_inputs, gen_outputs = gen_model.get_batch(train_set, bucket_id, 0)
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False)
+                                                        source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 
@@ -197,7 +212,7 @@ def al_train():
 
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
             train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True)
+                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 

@@ -263,8 +263,8 @@ def main(_):
 #    if (args.gen_file):
 #        conf.gen_config.train_data_file = args.gen_file
 
-    disc_pre_train()
-    gen_pre_train()
+  #  disc_pre_train()
+  #  gen_pre_train()
     al_train()
 
 

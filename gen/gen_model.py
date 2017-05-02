@@ -102,10 +102,10 @@ class Seq2SeqModel(object):
             self.decoder_inputs = []
             self.target_weights = []
             
-            for i in xrange(buckets[-1][0]):  # Last bucket is the biggest one.
+            for i in xrange(self.buckets[-1][0]):  # Last bucket is the biggest one.
               self.encoder_inputs.append(tf.placeholder(tf.int32, shape=[None], name="encoder{0}".format(i)))
             
-            for i in xrange(buckets[-1][1] + 1):
+            for i in xrange(self.buckets[-1][1] + 1):
               self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None], name="decoder{0}".format(i)))
               self.target_weights.append(tf.placeholder(dtype, shape=[None], name="weight{0}".format(i)))
 
@@ -115,27 +115,25 @@ class Seq2SeqModel(object):
             # Training outputs and losses.
             self.outputs, self.losses, self.encoder_state = rl_seq2seq.model_with_buckets(
                     self.encoder_inputs, self.decoder_inputs, targets,
-                    self.target_weights, buckets, 
+                    self.target_weights, self.buckets, 
                     lambda x, y: seq2seq_f(x, y, self.forward_only),
                     softmax_loss_function = softmax_loss_function)
             
            
+            self.output_q = []            
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
-                for b in xrange(len(buckets)):
-                    self.outputs[b] = [tf.cond(self.do_projection, 
+                for b_id in xrange(len(self.buckets)):
+                    self.outputs[b_id] = [tf.cond(self.do_projection, 
                                             lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
                                             lambda : output) 
-                                        for output in self.outputs[b] ]
-                    # adjusted_output = tf.identity(self.outputs[b])
-                    # adjusted_output[:,:,0] = tf.ones(adjusted_output.get_shape()[:2])
-            
-            self.output_q = []
+                                        for output in self.outputs[b_id] ]
 
-                    blen = buckets[b_id][1]                    
-                    out_T = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
+                    blen        = self.buckets[b_id][1]                    
+                    out_T       = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
+                    out_T_smax  = tf.nn.softmax(outT)
 
-                    inps = tf.pack(self.decoder_inputs[:blen])
+                    inps        = tf.pack(self.decoder_inputs[:blen])
                     
                     batch_size  = tf.shape(inps)[1]
                     max_len_dim = tf.tile(tf.expand_dims(tf.range(blen), 1), [1, batch_size])
@@ -144,7 +142,7 @@ class Seq2SeqModel(object):
 
                     pads        = tf.equal(inps, data_utils.PAD_ID)
 
-                    prob        = tf.gather_nd(out_T, indices)
+                    prob        = tf.gather_nd(out_T_smax, indices)
                     prob        = tf.select(pads,tf.ones(tf.shape(prob)), prob)
                     out_q       = tf.reduce_prod(prob, axis = 0)
                     
@@ -152,16 +150,16 @@ class Seq2SeqModel(object):
 
 
                     '''
-                    blen = buckets[b][1]
+                    blen = buckets[b_idb][1]
                     inps = tf.pack(self.decoder_inputs[:blen])
                     self.output_q.append(tf.ones(batch_size,dtype=tf.float32))
                     for i in xrange(blen):                      
                         ind = inps[i,:]                           
                         ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
-                        prob = tf.gather_nd(self.outputs[b][i],ind)
+                        prob = tf.gather_nd(self.outputs[b_idb][i],ind)
                         pads = tf.equal(self.decoder_inputs[i],data_utils.PAD_ID)
                         prob = tf.select(pads,tf.ones(batch_size),prob)
-                        self.output_q[b] = self.output_q[b] * prob
+                        self.output_q[b_idb] = self.output_q[b_idb] * prob
                     '''
             
             #self.q = tf.pack(self.output_q)[self.tf_bucket_id]

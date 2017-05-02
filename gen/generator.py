@@ -134,7 +134,7 @@ def train(gen_config):
               
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
-              print("Step %d loss is %f, learning rate is %f" % (model.global_step.eval(), moving_average_loss / 150, model.learning_rate.eval()))
+              print("Step %d loss is %f, learning rate is %f" % (model.global_step.eval(), moving_average_loss / gen_config.steps_per_sample, model.learning_rate.eval()))
               moving_average_loss = 0.0
               print("Sampled generator:\n")
               for input, response, label in zip(sample_context, sample_response, sample_labels):

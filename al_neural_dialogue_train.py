@@ -111,6 +111,33 @@ def disc_pre_train():
                 path = disc_model.saver.save(sess,checkpoint_prefix,global_step=disc_model.global_step)
                 print("Saved model chechpoint to{}\n".format(path))
 
+
+def gen_pre_train2():
+    with tf.Session() as sess:
+        initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
+        with tf.variable_scope("model",reuse=None,initializer=initializer):
+            disc_model = discs.create_model(sess, disc_config, is_training=True)
+        gen_model = gens.create_model(sess, gen_config)
+        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
+        train_total_size = float(sum(train_bucket_sizes))
+        train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
+                               for i in xrange(len(train_bucket_sizes))]
+
+        random_number_01 = np.random.random_sample()
+        bucket_id = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
+
+        update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)      
+        encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
+
+        # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
+        train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
+                                                    source_inputs,source_outputs,mc_search=True)
+        # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
+        reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)    
+        import pdb; pdb.set_trace()
+
+
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
     gen_config.batch_size = 1

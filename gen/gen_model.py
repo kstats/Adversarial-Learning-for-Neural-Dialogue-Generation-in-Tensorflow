@@ -131,7 +131,7 @@ class Seq2SeqModel(object):
 
                     blen        = self.buckets[b_id][1]                    
                     out_T       = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
-                    out_T_smax  = tf.nn.softmax(outT)
+                    out_T_smax  = tf.nn.softmax(out_T)
 
                     inps        = tf.pack(self.decoder_inputs[:blen])
                     
@@ -245,6 +245,7 @@ class Seq2SeqModel(object):
 
 
     def get_batch(self, train_data, bucket_id, type=0):
+        
     
         encoder_size, decoder_size        = self.buckets[bucket_id]
         encoder_inputs, decoder_inputs    = [], []
@@ -275,6 +276,8 @@ class Seq2SeqModel(object):
             decoder_pad_size = decoder_size - len(decoder_input) - 1
             decoder_inputs.append([data_utils.GO_ID] + decoder_input +
                           [data_utils.PAD_ID] * decoder_pad_size)
+
+        
 
         # Now we create batch-major vectors from the data selected above.
         batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []

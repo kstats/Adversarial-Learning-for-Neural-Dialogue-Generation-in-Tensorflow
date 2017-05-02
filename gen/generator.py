@@ -29,6 +29,7 @@ _buckets = conf.gen_config.buckets
 
 
 def read_data(dataset, max_size=None):
+    
     data_set = [[] for _ in _buckets]
     for i in range(dataset['len']):
         if (max_size and i > max_size):
@@ -119,6 +120,10 @@ def train(gen_config):
                 train_set, bucket_id, 0)
 
             _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection = False)
+            
+            #Uncomment to debug  forward_only = False, projection=True mode  
+            q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
+
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint
             loss += step_loss / gen_config.steps_per_checkpoint
@@ -126,7 +131,7 @@ def train(gen_config):
             current_step += 1
 
             if current_step % gen_config.steps_per_sample == 0:
-                
+              
               sample_context, sample_response, sample_labels, responses = gen_sample(sess, gen_config, model, vocab,
                                                batch_source_encoder, batch_source_decoder, mc_search=False)
               print("Step %d loss is %f, learning rate is %f" % (model.global_step.eval(), moving_average_loss / 150, model.learning_rate.eval()))
@@ -159,27 +164,6 @@ def train(gen_config):
                 model.saver.save(sess, checkpoint_path, global_step=model.global_step)
                 step_time, loss = 0.0, 0.0
                 sys.stdout.flush()
-
-def calculate_density(sess, input_token_ids, output_token_ids, vocab, model,
-                            beam_size, buckets, mc_search=True,debug=False):
-    
-    def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only = True)
-        prob          = softmax(logits[dptr][0])
-        return prob
-
-    def greedy_dec(output_logits):
-        selected_token_ids = [int(np.argmax(logit, axis=0)) for logit in np.squeeze(output_logits)]
-        return selected_token_ids
-
-    # Which bucket does it belong to?
-    bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])    
-    feed_data = {bucket_id: [(input_token_ids, output_token_ids)]}
-
-    # Get a 1-element batch to feed the sentence to the model.   None,bucket_id, True
-    encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
-    q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
-    return q
 
 
 
@@ -265,15 +249,16 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     return res_cands
 
 def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc_search=True):
+    
     sample_context = []
     sample_response = []
     sample_labels =[]
     rep = []
+
     for source_query, source_answer in zip(source_inputs, source_outputs):
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
-        q = calculate_density(sess, source_query, source_answer, vocab, model, gen_config.beam_size, _buckets, mc_search)
         responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
 
         for resp in responses:

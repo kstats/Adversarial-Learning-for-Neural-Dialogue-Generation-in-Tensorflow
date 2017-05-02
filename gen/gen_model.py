@@ -251,6 +251,7 @@ class Seq2SeqModel(object):
 
 
     def get_batch(self, train_data, bucket_id, type=0):
+        
     
         encoder_size, decoder_size        = self.buckets[bucket_id]
         encoder_inputs, decoder_inputs    = [], []
@@ -281,6 +282,8 @@ class Seq2SeqModel(object):
             decoder_pad_size = decoder_size - len(decoder_input) - 1
             decoder_inputs.append([data_utils.GO_ID] + decoder_input +
                           [data_utils.PAD_ID] * decoder_pad_size)
+
+        
 
         # Now we create batch-major vectors from the data selected above.
         batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []

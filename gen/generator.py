@@ -122,7 +122,7 @@ def train(gen_config):
             _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection = False)
             
             #Uncomment to debug  forward_only = False, projection=True mode  
-            q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
+            # q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
 
 
             step_time += (time.time() - start_time) / gen_config.steps_per_checkpoint

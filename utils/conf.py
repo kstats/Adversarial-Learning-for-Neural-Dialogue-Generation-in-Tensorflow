@@ -2,16 +2,16 @@ __author__ = 'MORAN01'
 import os
 class disc_config(object):
     batch_size          = 128
-    lr                  = 0.1
+    lr                  = 0.5
     lr_decay            = 0.6
     vocabulary_size     = 25003
-    keep_prob           = 0.6  
+    keep_prob           = 0.8  
     hidden_neural_size  = 512
     
     embed_dim           = 128
     hidden_layer_num    = 1
     train_dir           = 'data/training30k.txt.query.pkl'
-    train_data_file     = "./data/training200k.txt"
+    train_data_file     = "./data/training500k.txt"
     max_len             = 40
     valid_num           = 100
     checkpoint_num      = 1000
@@ -41,5 +41,5 @@ class gen_config(object):
     # train_data_file             = "training200k.txt"
     max_train_data_size         = 0
     steps_per_checkpoint        = 8000
-    steps_per_sample            = 50
+    steps_per_sample            = 150
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

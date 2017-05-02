@@ -120,7 +120,7 @@ class Seq2SeqModel(object):
                     softmax_loss_function = softmax_loss_function)
             
            
-            self.output_q = []            
+            self.output_q = []
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
                 for b_id in xrange(len(self.buckets)):
@@ -168,16 +168,23 @@ class Seq2SeqModel(object):
             # Gradients and SGD update operation for training the model.
             self.tvars          = tf.trainable_variables()
             self.gradient_norms = []
+            self.policy_gradient_norms = []
             self.updates        = []
+            self.policy_updates = []            
             self.reward         = [tf.placeholder(tf.float32, name="reward_%i" % i) for i in range(len(buckets))]
             opt                 = tf.train.GradientDescentOptimizer(self.learning_rate)
 
             for b in xrange(len(buckets)):
                 adjusted_losses         = tf.mul(self.losses[b], self.reward[b])
+                policy_losses           = tf.mul(tf.log(self.output_q[b]), self.reward[b])
                 gradients               = tf.gradients(adjusted_losses, self.tvars)
+                policy_gradients        = tf.gradients(policy_losses,self.tvars)
                 clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
                 self.gradient_norms.append(norm)
                 self.updates.append(opt.apply_gradients( zip(clipped_gradients, self.tvars), global_step = self.global_step))
+                clipped_gradients, norm = tf.clip_by_global_norm(policy_gradients, max_gradient_norm)
+                self.policy_gradient_norms.append(norm)
+                self.policy_updates.append(opt.apply_gradients( zip(clipped_gradients, self.tvars), global_step = self.global_step))
 
             all_variables = [k for k in tf.global_variables() if k.name.startswith(self.scope_name)]
             self.saver = tf.train.Saver(all_variables)
@@ -228,8 +235,7 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif not forward_only and projection:               #We are not in feed farward but want projection
-            import pdb; pdb.set_trace()            
-            output_feed = [self.q]
+            output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         else:
@@ -239,7 +245,7 @@ class Seq2SeqModel(object):
         if not forward_only and not projection:
             return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
         elif not forward_only and projection:
-            return outputs[0], outputs[1:]
+            return outputs[1:]
         else:
             return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 

@@ -43,10 +43,10 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
     dataset['response'] = source_outputs
     for resp in sample_response:
         dataset['response'].append(resp[0])
-    dataset['label'] = np.array([1] * len(source_inputs))
+    dataset['label'] = np.array([1] * (len(source_inputs)-1))
     for i in range(len(sample_response)):
-        np.append(dataset['label'], 0)
-    dataset['len'] = len(source_inputs) + len(sample_context)
+        dataset['label'] = np.append(dataset['label'], 0)
+    dataset['len'] = (len(source_inputs)-1) + len(sample_context)
     dataset['is_disc'] = True
     '''resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
@@ -223,9 +223,9 @@ def main(_):
     seed = int(time.time())
     np.random.seed(seed)  
     
-    # disc_pre_train()
+    disc_pre_train()
     #gen_pre_train()
-    al_train()
+    #al_train()
 
 if __name__ == "__main__":
     tf.app.run()

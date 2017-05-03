@@ -171,6 +171,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     ### Original greedy decoding
     if beam_size == 1 or (not mc_search): 
         _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
+        # import pdb; pdb.set_trace()
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 
     # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)
@@ -242,7 +243,8 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     beams, new_beams, results = [(1,
                                   {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], []
     #TODO fix this to work with buckets
-    for dptr in range(decoder_len - 1):
+    # for dptr in range(decoder_len - 1):
+    for dptr in range(decoder_len):
         if dptr > 0:
            target_weights[dptr] = [1.]
            beams, new_beams = new_beams[:1], []

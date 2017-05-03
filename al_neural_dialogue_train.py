@@ -22,7 +22,12 @@ def gen_pre_train():
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                gen_inputs, gen_outputs, mc_search=mc_search)
+    sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
+
+    sample_response2[1] = [sample_response2[1]]
+    responses2 = [responses2]
     print("disc_train_data, mc_search: ", mc_search)
+    import pdb; pdb.set_trace()
     rem_set = []
     for i in range(len(sample_labels)):
         if sample_labels[i] == 1:
@@ -150,17 +155,19 @@ def disc_pre_train():
 def gen_pre_train2():
     gen_config.batch_size = 1
     with tf.Session() as sess:
-        while True:
-            initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
-            with tf.variable_scope("model",reuse=None,initializer=initializer):
-                disc_model = discs.create_model(sess, disc_config, is_training=True)
-            gen_model = gens.create_model(sess, gen_config)
-            vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
-            train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
-            train_total_size = float(sum(train_bucket_sizes))
-            train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
-                                   for i in xrange(len(train_bucket_sizes))]
+        initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
+        with tf.variable_scope("model",reuse=None,initializer=initializer):
+            disc_model = discs.create_model(sess, disc_config, is_training=True)
+        gen_model = gens.create_model(sess, gen_config)
+        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
+        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
+        train_total_size = float(sum(train_bucket_sizes))
+        train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
+                               for i in xrange(len(train_bucket_sizes))]
 
+        gstep=0
+        while True:
+            gstep += 1
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
 
@@ -172,9 +179,10 @@ def gen_pre_train2():
                                                         source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
-            import pdb; pdb.set_trace()
-
+            print("Step %d, here are the discriminator logits:" % gstep)
+            print(reward)
             # Change data back into generator format
+            responses[0] = [data_util.GO_ID] + responses[0]
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
                 dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))

@@ -121,6 +121,8 @@ class Seq2SeqModel(object):
             
            
             self.output_q = []
+            # self.test_inps = []
+            # self.test_probs = []
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
                 for b_id in xrange(len(self.buckets)):
@@ -129,38 +131,41 @@ class Seq2SeqModel(object):
                                             lambda : output) 
                                         for output in self.outputs[b_id] ]
 
-                    blen        = self.buckets[b_id][1]                    
-                    out_T       = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
-                    out_T_smax  = tf.nn.softmax(out_T)
+                    # blen        = self.buckets[b_id][1]                    
+                    # out_T       = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
+                    # out_T_smax  = tf.nn.softmax(out_T)
 
-                    inps        = tf.pack(self.decoder_inputs[:blen])
+                    # inps        = tf.pack(self.decoder_inputs[:blen])
                     
-                    batch_size  = tf.shape(inps)[1]
-                    max_len_dim = tf.tile(tf.expand_dims(tf.range(blen), 1), [1, batch_size])
-                    batch_dim   = tf.transpose(tf.tile(tf.expand_dims(tf.range(batch_size), 1), [1, blen]))
-                    indices     = tf.stack([batch_dim, max_len_dim, inps], axis=2)
+                    # batch_size  = tf.shape(inps)[1]
+                    # max_len_dim = tf.tile(tf.expand_dims(tf.range(blen), 1), [1, batch_size])
+                    # batch_dim   = tf.transpose(tf.tile(tf.expand_dims(tf.range(batch_size), 1), [1, blen]))
+                    # indices     = tf.stack([batch_dim, max_len_dim, inps], axis=2)
 
-                    pads        = tf.equal(inps, data_utils.PAD_ID)
+                    # pads        = tf.equal(inps, data_utils.PAD_ID)
 
-                    prob        = tf.gather_nd(out_T_smax, indices)
-                    prob        = tf.select(pads,tf.ones(tf.shape(prob)), prob)
-                    out_q       = tf.reduce_prod(prob, axis = 0)
+                    # prob        = tf.gather_nd(out_T_smax, indices)
+                    # prob        = tf.select(pads,tf.ones(tf.shape(prob)), prob)
+                    # out_q       = tf.reduce_prod(prob, axis = 0)
                     
-                    self.output_q.append(out_q)
+                    # self.output_q.append(out_q)
 
 
-                    '''
-                    blen = buckets[b_idb][1]
-                    inps = tf.pack(self.decoder_inputs[:blen])
+                    
+                    blen = buckets[b_id][1]
+                    inps = tf.pack(self.decoder_inputs[1:blen])
+                    # self.test_inps.append(inps)
                     self.output_q.append(tf.ones(batch_size,dtype=tf.float32))
-                    for i in xrange(blen):                      
+                    # self.test_probs.append([])
+                    for i in xrange(blen-1):
                         ind = inps[i,:]                           
                         ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
-                        prob = tf.gather_nd(self.outputs[b_idb][i],ind)
-                        pads = tf.equal(self.decoder_inputs[i],data_utils.PAD_ID)
+                        prob = tf.gather_nd(tf.nn.softmax(self.outputs[b_id][i]),ind)
+                        pads = tf.equal(inps[i],data_utils.PAD_ID)
                         prob = tf.select(pads,tf.ones(batch_size),prob)
-                        self.output_q[b_idb] = self.output_q[b_idb] * prob
-                    '''
+                        # self.test_probs[b_id].append(prob)
+                        self.output_q[b_id] = self.output_q[b_id] * prob
+                    
             
             #self.q = tf.pack(self.output_q)[self.tf_bucket_id]
 
@@ -209,9 +214,7 @@ class Seq2SeqModel(object):
         input_feed = {self.forward_only.name : forward_only,
                       self.do_projection.name: projection,
                       self.tf_bucket_id: bucket_id}
-
-        if reward is not None:
-          import pdb; pdb.set_trace()
+        
         for l in xrange(len(self.buckets)):
             input_feed[self.reward[l].name] = reward if reward else 1
 
@@ -237,7 +240,7 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif not forward_only and projection:               #We are not in feed farward but want projection
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

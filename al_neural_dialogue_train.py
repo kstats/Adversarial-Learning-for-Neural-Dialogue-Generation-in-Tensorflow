@@ -22,8 +22,6 @@ def gen_pre_train():
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                gen_inputs, gen_outputs, mc_search=mc_search)
-    #import pdb; pdb.set_trace()
-
     print("disc_train_data, mc_search: ", mc_search)
     rem_set = []
     for i in range(len(sample_labels)):
@@ -34,35 +32,30 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         del sample_context[elem]
         del sample_response[elem]
         del sample_labels[elem]
-        del responses[elem]
+        # del responses[elem]
 
-    if isDisc:
-        dataset = {}
-        dataset['context'] = source_inputs
-        for context in sample_context:
-            dataset['context'].append(context)
-        dataset['response'] = source_outputs
+    dataset = {}
+    dataset['is_disc']  = True
+    dataset['label']    = np.array([1] * (len(source_inputs)-1))
+    for i in range(len(sample_response)):
+        dataset['label'] = np.append(dataset['label'], 0)
+
+    dataset['context'] = source_inputs if isDisc else []
+    for context in sample_context:
+        dataset['context'].append(context)
+    
+    dataset['response'] = source_outputs if isDisc else []
+    if mc_search:
+        for resp in sample_response: 
+            dataset['response'].append(resp)
+    else:
+        responses = responses[0]
         for resp in sample_response:
             dataset['response'].append(resp[0])
-        dataset['label'] = np.array([1] * (len(source_inputs)-1))
-        for i in range(len(sample_response)):
-            dataset['label'] = np.append(dataset['label'], 0)
-        dataset['len'] = (len(source_inputs)-1) + len(sample_context)
-        dataset['is_disc'] = True
+    
+    # dataset['len'] = (len(source_inputs)-1) + len(sample_context) if isDisc else len(sample_context)
 
-    else:
-        dataset = {}
-        dataset['context'] = []
-        for context in sample_context:
-            dataset['context'].append(context)
-        dataset['response'] = []
-        for resp in sample_response:
-            dataset['response'].append(resp)
-        dataset['label'] = np.array([1] * (len(source_inputs) - 1))
-        for i in range(len(sample_response)):
-            dataset['label'] = np.append(dataset['label'], 0)
-        dataset['len'] = len(sample_context)
-        dataset['is_disc'] = True
+   
     '''resp = []
     for input, response, label in zip(sample_context, sample_response, sample_labels):
        print(str(label) + "\t" + str(input) + "\t" + str(response))
@@ -162,7 +155,7 @@ def gen_pre_train2():
             with tf.variable_scope("model",reuse=None,initializer=initializer):
                 disc_model = discs.create_model(sess, disc_config, is_training=True)
             gen_model = gens.create_model(sess, gen_config)
-            vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+            vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
             train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
             train_total_size = float(sum(train_bucket_sizes))
             train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -179,8 +172,8 @@ def gen_pre_train2():
                                                         source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
-            import pdb; pdb.set_trace()
 
+            import pdb; pdb.set_trace()
             # Change data back into generator format
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:

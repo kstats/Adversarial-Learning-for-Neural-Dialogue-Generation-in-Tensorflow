@@ -6,7 +6,8 @@ class disc_config(object):
     lr                          = 0.5
     lr_decay                    = 0.6
     max_grad_norm               = 5    
-    keep_prob                   = 0.8  
+    # keep_prob                   = 0.8  
+    keep_prob                   = 1.
     batch_size                  = 128
     embed_dim                   = 128
     class_num                   = 2

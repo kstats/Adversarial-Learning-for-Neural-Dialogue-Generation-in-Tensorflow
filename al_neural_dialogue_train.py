@@ -20,9 +20,13 @@ def gen_pre_train():
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
-    sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
-                                               gen_inputs, gen_outputs, mc_search=mc_search)
-    #import pdb; pdb.set_trace()
+
+    #if isDisc:
+     #   sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
+      #                                         gen_inputs, gen_outputs, mc_search=mc_search)
+    #else:
+    import pdb; pdb.set_trace()
+    sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab, num_samples=1)
 
     print("disc_train_data, mc_search: ", mc_search)
     rem_set = []
@@ -34,7 +38,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         del sample_context[elem]
         del sample_response[elem]
         del sample_labels[elem]
-        del responses[elem]
+        #del responses[elem]
 
     if isDisc:
         dataset = {}
@@ -44,10 +48,10 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         dataset['response'] = source_outputs
         for resp in sample_response:
             dataset['response'].append(resp[0])
-        dataset['label'] = np.array([1] * (len(source_inputs)-1))
+        dataset['label'] = np.array([1] * (len(source_inputs)/2))
         for i in range(len(sample_response)):
             dataset['label'] = np.append(dataset['label'], 0)
-        dataset['len'] = (len(source_inputs)-1) + len(sample_context)
+        dataset['len'] = (len(source_inputs)/2) + len(sample_context)
         dataset['is_disc'] = True
 
     else:
@@ -58,7 +62,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         dataset['response'] = []
         for resp in sample_response:
             dataset['response'].append(resp)
-        dataset['label'] = np.array([1] * (len(source_inputs) - 1))
+        dataset['label'] = np.array([1] * (len(source_inputs)/2))
         for i in range(len(sample_response)):
             dataset['label'] = np.append(dataset['label'], 0)
         dataset['len'] = len(sample_context)
@@ -162,7 +166,7 @@ def gen_pre_train2():
             with tf.variable_scope("model",reuse=None,initializer=initializer):
                 disc_model = discs.create_model(sess, disc_config, is_training=True)
             gen_model = gens.create_model(sess, gen_config)
-            vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+            vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
             train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
             train_total_size = float(sum(train_bucket_sizes))
             train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -182,7 +186,7 @@ def gen_pre_train2():
             import pdb; pdb.set_trace()
 
             # Change data back into generator format
-            dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
+            dec_gen = responses[0][:gen_config.buckets[bucket_id]]
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
                 dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
             dec_gen = np.reshape(dec_gen, (-1,1))
@@ -193,7 +197,7 @@ def gen_pre_train2():
 
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
-    gen_config.batch_size = 1
+    gen_config.batch_size = 5
     with tf.Session() as sess:
         initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
         with tf.variable_scope("model",reuse=None,initializer=initializer):
@@ -220,7 +224,7 @@ def al_train():
                                                         source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
-
+            import pdb; pdb.set_trace()
             print("===============================Update Generator================================")
             # 1.Sample (X,Y) from real data
             update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)
@@ -228,16 +232,22 @@ def al_train():
 
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
             train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
+                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=True)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
 
             # 4.Update G on (X, ^Y ) using reward r
+            '''dec_gen = []
+            for i in range(len(responses)):
+                dec_gen.append(responses[i][:gen_config.buckets[bucket_id][1][0]])
+                if len(dec_gen)< gen_config.buckets[bucket_id][1]:
+                    dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
+            dec_gen = np.reshape(dec_gen, (-1,gen_config.batch_size,1))'''
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
-            if len(dec_gen)< gen_config.buckets[bucket_id][1]:
-                dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
-            dec_gen = np.reshape(dec_gen, (-1,1))
-            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
+            if len(dec_gen) < gen_config.buckets[bucket_id][1]:
+                dec_gen = dec_gen + [0] * (gen_config.buckets[bucket_id][1] - len(dec_gen))
+            dec_gen = np.reshape(dec_gen, (-1, 1))
+            gen_model.step(sess, train_inputs, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
 
             # 5.Teacher-Forcing: Update G on (X, Y )
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
@@ -252,8 +262,7 @@ def al_train():
 
 def main(_):
     seed = int(time.time())
-    np.random.seed(seed)  
-
+    np.random.seed(seed)
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('train_type', type=str)
@@ -279,10 +288,6 @@ def main(_):
     else:
         print ("Runinng Adversarial")        
         al_train()
-
-   
-
-
 
 
 

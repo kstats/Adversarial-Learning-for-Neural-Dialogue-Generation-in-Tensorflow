@@ -85,7 +85,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
     return train_inputs, train_labels, train_masks, responses
 
 # discriminator api
-def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
+def disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_train=True):
     feed_dict={}
 
     feed_dict[disc_model.context] = train_inputs[:, 0, :]
@@ -96,10 +96,15 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks):
     feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
 
     disc_model.assign_new_batch_size(sess,len(train_inputs))
-    fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
-    cost,accuracy,_,summary = sess.run(fetches,feed_dict)
-    print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
-    return accuracy
+    if do_train:
+        fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
+        cost,accuracy,_,summary = sess.run(fetches,feed_dict)
+        print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
+        return accuracy
+    else:        
+        fetches = [disc_model.cost,disc_model.accuracy,tf.nn.softmax(disc_model.logits),disc_model.summary]
+        cost,accuracy,logits,summary = sess.run(fetches,feed_dict)
+        return logits
 
 
 # pre train discriminator
@@ -150,30 +155,41 @@ def disc_pre_train():
 
 
 def gen_pre_train2():
+    gen_config.batch_size = 1
     with tf.Session() as sess:
-        initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
-        with tf.variable_scope("model",reuse=None,initializer=initializer):
-            disc_model = discs.create_model(sess, disc_config, is_training=True)
-        gen_model = gens.create_model(sess, gen_config)
-        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
-        train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
-        train_total_size = float(sum(train_bucket_sizes))
-        train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
-                               for i in xrange(len(train_bucket_sizes))]
+        while True:
+            initializer = tf.random_uniform_initializer(-1*disc_config.init_scale,1*disc_config.init_scale)
+            with tf.variable_scope("model",reuse=None,initializer=initializer):
+                disc_model = discs.create_model(sess, disc_config, is_training=True)
+            gen_model = gens.create_model(sess, gen_config)
+            vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+            train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
+            train_total_size = float(sum(train_bucket_sizes))
+            train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
+                                   for i in xrange(len(train_bucket_sizes))]
 
-        random_number_01 = np.random.random_sample()
-        bucket_id = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
+            random_number_01 = np.random.random_sample()
+            bucket_id = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
 
-        update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)      
-        encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
+            update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)      
+            encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
 
-        # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
-        train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                    source_inputs,source_outputs,mc_search=True)
-        # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
-        reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)    
-        import pdb; pdb.set_trace()
+            # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
+            train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
+                                                        source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False)
+            # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
+            reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
+            import pdb; pdb.set_trace()
 
+            # Change data back into generator format
+            dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
+            if len(dec_gen)< gen_config.buckets[bucket_id][1]:
+                dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
+            dec_gen = np.reshape(dec_gen, (-1,1))
+
+            # Do a step of policy gradient on the generator
+
+            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = True, reward = reward[:,1])
 
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
@@ -235,7 +251,6 @@ def al_train():
         pass
 
 def main(_):
-    
     seed = int(time.time())
     np.random.seed(seed)  
 
@@ -258,6 +273,9 @@ def main(_):
     elif args.train_type == 'gen':
         print ("Runinng Generator Pre-Train")
         gen_pre_train()
+    elif args.train_type == 'gen2':
+        print ("Runinng Generator Pre-Train 2")
+        gen_pre_train2()
     else:
         print ("Runinng Adversarial")        
         al_train()

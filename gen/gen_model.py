@@ -12,6 +12,7 @@ import utils.data_utils as data_utils
 import gen.seq2seq as rl_seq2seq
 sys.path.append('../utils')
 
+    
 class Seq2SeqModel(object):
 
     def __init__(self, 
@@ -22,6 +23,8 @@ class Seq2SeqModel(object):
     
         self.scope_name = scope_name
         with tf.variable_scope(self.scope_name):
+
+
             self.source_vocab_size      = source_vocab_size
             self.target_vocab_size      = target_vocab_size
             self.buckets                = buckets
@@ -45,49 +48,57 @@ class Seq2SeqModel(object):
             def policy_gradient(logit, labels):
                 return tf.reduce_max(tf.nn.softmax(logit, 0))
            
-
-            def sampled_loss(inputs, labels):
+            
+            def sampled_loss(labels, inputs):
                 labels = tf.reshape(labels, [-1, 1])
                 # We need to compute the sampled_softmax_loss using 32bit floats to
                 # avoid numerical instabilities.
-                local_w_t    = tf.cast(self.w_t, tf.float32)
-                local_b      = tf.cast(self.b, tf.float32)
+                local_w_t    = tf.cast(w_t, tf.float32)
+                local_b      = tf.cast(b, tf.float32)
                 local_inputs = tf.cast(inputs, tf.float32)
                 return tf.cast(
-                    tf.nn.sampled_softmax_loss(weights = local_w_t, biases = local_b, labels = labels,
-                                               inputs = local_inputs, num_sampled = num_samples, 
-                                               num_classes = self.target_vocab_size), dtype)
+                    tf.nn.sampled_softmax_loss(
+                        weights = local_w_t, 
+                        biases = local_b, 
+                        labels = labels,
+                        inputs = local_inputs, 
+                        num_sampled = num_samples, 
+                        num_classes = self.target_vocab_size), 
+                    dtype)
 
-
-            self.w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype)
-            self.w   = tf.transpose(self.w_t)
-            self.b   = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
+                    
+            # If we use sampled softmax, we need an output projection.
+            output_projection = None
+            softmax_loss_function = None
+            # Sampled softmax only makes sense if we sample less than vocabulary size.
+            if num_samples > 0 and num_samples < self.target_vocab_size:
+                w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype)
+                w = tf.transpose(w_t)
+                b = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
+                output_projection = (w, b)
+            
 
             if num_samples in xrange(1, self.target_vocab_size):
-                self.output_projection  = (self.w, self.b)  
                 # Sampled softmax only makes sense if we sample less than vocabulary size.        
                 softmax_loss_function   = sampled_loss 
             else:
-                self.output_projection  = None
                 softmax_loss_function   = policy_gradient
             
-
-                       
             
             # Create the internal multi-layer cell for our RNN.
-            single_cell = tf.contrib.rnn.GRUCell(size)
-            #single_cell = tf.nn.rnn_cell.GRUCell(size)
+            def single_cell():
+                return tf.contrib.rnn.GRUCell(size)
             if use_lstm:
-                single_cell = tf.contrib.rnn.GRUCell(size)
-                #single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
-            cell = single_cell      
+                def single_cell():
+                    return tf.contrib.rnn.BasicLSTMCell(size)
+            cell = single_cell()
             if keep_prob < 1:
                 print('Generator Dropout %f' % keep_prob)
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keep_prob)
             if num_layers > 1:
-                #cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
-                cell = tf.contrib.rnn.MultiRNNCell([cell_creator() for _ in range(num_layers)])
+                cell = tf.contrib.rnn.MultiRNNCell([single_cell() for _ in range(num_layers)])
 
+                       
             # The seq2seq function: we use embedding for the input and attention.
             def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
                 return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
@@ -99,10 +110,12 @@ class Seq2SeqModel(object):
                     num_decoder_symbols = target_vocab_size,
                     # embedding_size      = size,
                     embedding_size      = 128,
-                    output_projection   = self.output_projection,
+                    output_projection   = output_projection,
                     feed_previous       = do_decode,
                     dtype               = dtype)
 
+
+   
             # Feeds for inputs.
             self.encoder_inputs = []
             self.decoder_inputs = []
@@ -120,19 +133,19 @@ class Seq2SeqModel(object):
 
             # Training outputs and losses.
             #self.outputs, self.losses, self.encoder_state = rl_seq2seq.model_with_buckets(
-            self.outputs, self.losses, self.encoder_state = tf.contrib.legacy_seq2seq.model_with_buckets(
+            self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
                     self.encoder_inputs, self.decoder_inputs, targets,
                     self.target_weights, self.buckets, 
                     lambda x, y: seq2seq_f(x, y, self.forward_only),
                     softmax_loss_function = softmax_loss_function)
             
-           
+               
             self.output_q = []
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
                 for b_id in xrange(len(self.buckets)):
                     self.outputs[b_id] = [tf.cond(self.do_projection, 
-                                            lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
+                                            lambda : tf.matmul(output, output_projection[0]) + output_projection[1],
                                             lambda : output) 
                                         for output in self.outputs[b_id] ]
 
@@ -168,7 +181,6 @@ class Seq2SeqModel(object):
                         self.output_q[b_id] = self.output_q[b_id] * prob
             
             #self.q = tf.pack(self.output_q)[self.tf_bucket_id]
-
            
             # Gradients and SGD update operation for training the model.
             self.tvars          = tf.trainable_variables()

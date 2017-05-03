@@ -241,11 +241,11 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)
     beams, new_beams, results = [(1,
                                   {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], []
-
+    #TODO fix this to work with buckets
     for dptr in range(decoder_len - 1):
         if dptr > 0:
            target_weights[dptr] = [1.]
-          #  beams, new_beams = new_beams[:beam_size], []
+           beams, new_beams = new_beams[:1], []
         #if debug: print("=====[beams]=====", beams)
         #heapq.heapify(beams)  # since we will srot and remove something to keep N elements
         for prob, cand in beams:
@@ -263,16 +263,18 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
                 all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
 
             all_prob = softmax(all_prob)
-            c = np.where(np.random.multinomial(1, all_prob))[0][0]
+            ca = np.where(np.random.multinomial(1, all_prob))[0][0]
             #TODO Change this to sample
 
             new_cand = {
-                'eos': (c == data_utils.EOS_ID),
-                'dec_inp': [(np.array([c]) if i == (dptr + 1) else k) for i, k in enumerate(cand['dec_inp'])],
-                'prob_ts': cand['prob_ts'] * all_prob_ts[c],
-                'prob_t': cand['prob_t'] * all_prob_t[c],
-                'prob': cand['prob'] * all_prob[c],
+                'eos': (ca == data_utils.EOS_ID),
+                'dec_inp': [(np.array([ca]) if i == (dptr + 1) else k) for i, k in enumerate(cand['dec_inp'])],
+                'prob_ts': cand['prob_ts'] * all_prob_ts[ca],
+                'prob_t': cand['prob_t'] * all_prob_t[ca],
+                'prob': cand['prob'] * all_prob[ca],
             }
+            new_cand = (new_cand['prob'], new_cand)
+            heapq.heappush(new_beams, new_cand)
             # beam search
             '''for c in np.argsort(all_prob)[::-1][:beam_size]:
                 new_cand = {
@@ -289,13 +291,15 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
                 elif (new_cand[0] > new_beams[0][0]):
                     heapq.heapreplace(new_beams, new_cand)'''
 
-    results += new_beams  # flush last cands
+    results += beams  # flush last cands
 
     # post-process results
     res_cands = []
-    for prob, cand in sorted(results, reverse=True):
-        res_cands.append(cand)
-    return res_cands
+    #for prob, cand in sorted(results, reverse=True):
+    temp = beams[0][1]['dec_inp']
+    temp2 = [te[0] for te in temp]
+    temp2.pop(0)
+    return temp2
 
 
 
@@ -328,3 +332,21 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
 
     return sample_context, sample_response, sample_labels, rep
     pass
+
+def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, num_samples=1):
+    sample_context = []
+    sample_response = []
+    sample_labels = []
+    rep = []
+    for con, gold in zip(context, gold_standard):
+        sample_response.append(gold)
+        sample_context.append(con)
+        sample_labels.append(1)
+        for i in range(num_samples):
+            ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
+            sample_response.append(ret)
+            sample_context.append(con)
+            sample_labels.append(0)
+            rep.append(ret)
+
+    return sample_context, sample_response, sample_labels, rep

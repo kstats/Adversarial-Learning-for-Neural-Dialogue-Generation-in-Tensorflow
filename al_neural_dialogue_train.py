@@ -21,12 +21,12 @@ def gen_pre_train():
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
-    #sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
-    #                                           gen_inputs, gen_outputs, mc_search=mc_search)
-    sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
+    sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
+                                               gen_inputs, gen_outputs, mc_search=mc_search)
+    sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
 
-    #sample_response2[1] = [sample_response2[1]]
-    #responses2 = [responses2]
+    sample_response2[1] = [sample_response2[1]]
+    responses2 = [responses2]
     print("disc_train_data, mc_search: ", mc_search)
     import pdb; pdb.set_trace()
     rem_set = []

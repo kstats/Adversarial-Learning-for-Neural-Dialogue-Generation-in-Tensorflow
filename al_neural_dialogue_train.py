@@ -7,6 +7,7 @@ import gen.generator as gens
 import disc.discriminator as discs
 import utils.data_utils as data_util
 import utils.conf as conf
+import pickle
 
 gen_config  = conf.gen_config
 disc_config = conf.disc_config
@@ -20,12 +21,12 @@ def gen_pre_train():
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
-    sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
-                                               gen_inputs, gen_outputs, mc_search=mc_search)
-    sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
+    #sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
+    #                                           gen_inputs, gen_outputs, mc_search=mc_search)
+    sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
 
-    sample_response2[1] = [sample_response2[1]]
-    responses2 = [responses2]
+    #sample_response2[1] = [sample_response2[1]]
+    #responses2 = [responses2]
     print("disc_train_data, mc_search: ", mc_search)
     import pdb; pdb.set_trace()
     rem_set = []
@@ -166,6 +167,8 @@ def gen_pre_train2():
                                for i in xrange(len(train_bucket_sizes))]
 
         gstep=0
+        rewards = []
+        steps = []
         while True:
             gstep += 1
             random_number_01 = np.random.random_sample()
@@ -181,6 +184,10 @@ def gen_pre_train2():
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
             print("Step %d, here are the discriminator logits:" % gstep)
             print(reward)
+            steps.append(gstep)
+            rewards.append(reward[0][1])
+            pickle.dump(steps, open("steps.p", "wb"))
+            pickle.dump(rewards, open("rewards.p","wb"))
             # Change data back into generator format
             responses[0] = [data_util.GO_ID] + responses[0]
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]

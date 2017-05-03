@@ -35,7 +35,6 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         # del responses[elem]
 
     dataset = {}
-    dataset['is_disc']  = True
     dataset['label']    = np.array([1] * (len(source_inputs)-1))
     for i in range(len(sample_response)):
         dataset['label'] = np.append(dataset['label'], 0)
@@ -53,7 +52,9 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
         for resp in sample_response:
             dataset['response'].append(resp[0])
     
-    # dataset['len'] = (len(source_inputs)-1) + len(sample_context) if isDisc else len(sample_context)
+    #dataset['len'] = (len(source_inputs)-1) + len(sample_context) if isDisc else len(sample_context)
+    #dataset['is_disc']  = True
+
 
    
     '''resp = []

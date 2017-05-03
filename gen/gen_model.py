@@ -72,30 +72,36 @@ class Seq2SeqModel(object):
                 softmax_loss_function   = policy_gradient
             
 
+                       
+            
             # Create the internal multi-layer cell for our RNN.
-            single_cell = tf.nn.rnn_cell.GRUCell(size)
+            single_cell = tf.contrib.rnn.GRUCell(size)
+            #single_cell = tf.nn.rnn_cell.GRUCell(size)
             if use_lstm:
-                single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
+                single_cell = tf.contrib.rnn.GRUCell(size)
+                #single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
             cell = single_cell      
             if keep_prob < 1:
                 print('Generator Dropout %f' % keep_prob)
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keep_prob)
             if num_layers > 1:
-                cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
+                #cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
+                cell = tf.contrib.rnn.MultiRNNCell([cell_creator() for _ in range(num_layers)])
 
             # The seq2seq function: we use embedding for the input and attention.
             def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
-              return rl_seq2seq.embedding_attention_seq2seq(
-                  encoder_inputs,
-                  decoder_inputs,
-                  cell,
-                  num_encoder_symbols = source_vocab_size,
-                  num_decoder_symbols = target_vocab_size,
-                  # embedding_size      = size,
-                  embedding_size      = 128,
-                  output_projection   = self.output_projection,
-                  feed_previous       = do_decode,
-                  dtype               = dtype)
+                return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
+              #return rl_seq2seq.embedding_attention_seq2seq(
+                    encoder_inputs,
+                    decoder_inputs,
+                    cell,
+                    num_encoder_symbols = source_vocab_size,
+                    num_decoder_symbols = target_vocab_size,
+                    # embedding_size      = size,
+                    embedding_size      = 128,
+                    output_projection   = self.output_projection,
+                    feed_previous       = do_decode,
+                    dtype               = dtype)
 
             # Feeds for inputs.
             self.encoder_inputs = []
@@ -113,7 +119,8 @@ class Seq2SeqModel(object):
             targets = [self.decoder_inputs[i + 1] for i in xrange(len(self.decoder_inputs) - 1)]
 
             # Training outputs and losses.
-            self.outputs, self.losses, self.encoder_state = rl_seq2seq.model_with_buckets(
+            #self.outputs, self.losses, self.encoder_state = rl_seq2seq.model_with_buckets(
+            self.outputs, self.losses, self.encoder_state = tf.contrib.legacy_seq2seq.model_with_buckets(
                     self.encoder_inputs, self.decoder_inputs, targets,
                     self.target_weights, self.buckets, 
                     lambda x, y: seq2seq_f(x, y, self.forward_only),
@@ -129,38 +136,36 @@ class Seq2SeqModel(object):
                                             lambda : output) 
                                         for output in self.outputs[b_id] ]
 
-                    blen        = self.buckets[b_id][1]                    
-                    out_T       = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
-                    out_T_smax  = tf.nn.softmax(out_T)
+                   # blen        = self.buckets[b_id][1]                    
+                   # out_T       = tf.transpose(tf.stack(self.outputs[b_id]), perm=[1, 0, 2]) # batch X max_len Xvocab 
+                   # out_T_smax  = tf.nn.softmax(out_T)
 
-                    inps        = tf.pack(self.decoder_inputs[:blen])
-                    
-                    batch_size  = tf.shape(inps)[1]
-                    max_len_dim = tf.tile(tf.expand_dims(tf.range(blen), 1), [1, batch_size])
-                    batch_dim   = tf.transpose(tf.tile(tf.expand_dims(tf.range(batch_size), 1), [1, blen]))
-                    indices     = tf.stack([batch_dim, max_len_dim, inps], axis=2)
+                   # inps        = tf.pack(self.decoder_inputs[:blen])
+                   # 
+                   # batch_size  = tf.shape(inps)[1]
+                   # max_len_dim = tf.tile(tf.expand_dims(tf.range(blen), 1), [1, batch_size])
+                   # batch_dim   = tf.transpose(tf.tile(tf.expand_dims(tf.range(batch_size), 1), [1, blen]))
+                   # indices     = tf.stack([batch_dim, max_len_dim, inps], axis=2)
 
-                    pads        = tf.equal(inps, data_utils.PAD_ID)
+                   # pads        = tf.equal(inps, data_utils.PAD_ID)
 
-                    prob        = tf.gather_nd(out_T_smax, indices)
-                    prob        = tf.select(pads,tf.ones(tf.shape(prob)), prob)
-                    out_q       = tf.reduce_prod(prob, axis = 0)
-                    
-                    self.output_q.append(out_q)
+                   # prob        = tf.gather_nd(out_T_smax, indices)
+                   # prob        = tf.select(pads,tf.ones(tf.shape(prob)), prob)
+                   # out_q       = tf.reduce_prod(prob, axis = 0)
+                   # 
+                   # self.output_q.append(out_q)
 
 
-                    '''
-                    blen = buckets[b_idb][1]
+                    blen = buckets[b_id][1]
                     inps = tf.pack(self.decoder_inputs[:blen])
                     self.output_q.append(tf.ones(batch_size,dtype=tf.float32))
                     for i in xrange(blen):                      
                         ind = inps[i,:]                           
                         ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
-                        prob = tf.gather_nd(self.outputs[b_idb][i],ind)
+                        prob = tf.gather_nd(self.outputs[b_id][i],ind)
                         pads = tf.equal(self.decoder_inputs[i],data_utils.PAD_ID)
                         prob = tf.select(pads,tf.ones(batch_size),prob)
-                        self.output_q[b_idb] = self.output_q[b_idb] * prob
-                    '''
+                        self.output_q[b_id] = self.output_q[b_id] * prob
             
             #self.q = tf.pack(self.output_q)[self.tf_bucket_id]
 

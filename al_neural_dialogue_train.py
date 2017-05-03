@@ -172,8 +172,8 @@ def gen_pre_train2():
                                                         source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
-
             import pdb; pdb.set_trace()
+
             # Change data back into generator format
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
@@ -232,6 +232,13 @@ def al_train():
             dec_gen = np.reshape(dec_gen, (-1,1))
             gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
 
+'''dec_gen = []
+            for i in range(len(responses)):
+                dec_gen.append(responses[i][:gen_config.buckets[bucket_id][1][0]])
+                if len(dec_gen)< gen_config.buckets[bucket_id][1]:
+                    dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
+            dec_gen = np.reshape(dec_gen, (-1,gen_config.batch_size,1))'''
+
             # 5.Teacher-Forcing: Update G on (X, Y )
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
             print("loss: ", loss)
@@ -252,13 +259,22 @@ def main(_):
     parser.add_argument('train_type', type=str)
     parser.add_argument('--gen_file', type=str)
     parser.add_argument('--disc_file', type=str)
+    parser.add_argument('--gen_prob', type=float)
+    parser.add_argument('--disc_prob', type=float)
+
     args = parser.parse_args()
+
+    if (args.gen_file):
+        conf.gen_config.train_data_file = args.gen_file
+
+    if(args.gen_prob):
+        conf.gen_config.keep_prob = args.gen_prob
 
     if (args.disc_file):
         conf.disc_config.train_data_file = args.disc_file
 
-    if (args.gen_file):
-        conf.gen_config.train_data_file = args.gen_file
+    if(args.disc_prob):
+        conf.disc_config.keep_prob = args.disc_prob
  
     if args.train_type == 'disc': 
         print ("Runinng Discriminator Pre-Train") 
@@ -272,11 +288,6 @@ def main(_):
     else:
         print ("Runinng Adversarial")        
         al_train()
-
-   
-
-
-
 
 
 if __name__ == "__main__":

@@ -27,6 +27,9 @@ def optimistic_restore(session, save_file):
 
 
 def create_model(session, config, is_training):
+    
+    start_time  = time.time()        
+
     """Create translation model and initialize or load parameters in session."""
     model = disc_rnn_model.disc_rnn_model(config=config,is_training=is_training, isLstm=True)
 
@@ -40,6 +43,10 @@ def create_model(session, config, is_training):
         print("Created Disc_RNN model with fresh parameters.")
         if is_training:
             session.run(tf.global_variables_initializer())
+
+    end_time    = time.time()
+    print("Time to create Disc_RNN model: %.2f" % (end_time - start_time))
+
     return model
 
 

@@ -48,9 +48,10 @@ class Seq2SeqModel(object):
             def policy_gradient(logit, labels):
                 return tf.reduce_max(tf.nn.softmax(logit, 0))
            
-            
+
             def sampled_loss(labels, inputs):
                 labels = tf.reshape(labels, [-1, 1])
+                #inputs = tf.reshape(inputs, [-1,1])
                 # We need to compute the sampled_softmax_loss using 32bit floats to
                 # avoid numerical instabilities.
                 local_w_t    = tf.cast(w_t, tf.float32)
@@ -58,15 +59,15 @@ class Seq2SeqModel(object):
                 local_inputs = tf.cast(inputs, tf.float32)
                 return tf.cast(
                     tf.nn.sampled_softmax_loss(
-                        weights = local_w_t, 
-                        biases = local_b, 
+                        weights = local_w_t,
+                        biases = local_b,
                         labels = labels,
-                        inputs = local_inputs, 
-                        num_sampled = num_samples, 
-                        num_classes = self.target_vocab_size), 
+                        inputs = local_inputs,
+                        num_sampled = num_samples,
+                        num_classes = self.target_vocab_size),
                     dtype)
 
-                    
+
             # If we use sampled softmax, we need an output projection.
             output_projection = None
             softmax_loss_function = None
@@ -76,7 +77,16 @@ class Seq2SeqModel(object):
                 w = tf.transpose(w_t)
                 b = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
                 output_projection = (w, b)
-            
+
+                tf.nn.sampled_softmax_loss(weights = local_w_t, biases = local_b, labels = labels,
+                                           inputs = local_inputs,
+                                            num_sampled = num_samples,
+                                           num_classes = self.target_vocab_size), dtype)
+
+
+            self.w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype)
+            self.w   = tf.transpose(self.w_t)
+            self.b   = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
 
             if num_samples in xrange(1, self.target_vocab_size):
                 # Sampled softmax only makes sense if we sample less than vocabulary size.        
@@ -92,6 +102,7 @@ class Seq2SeqModel(object):
                 def single_cell():
                     return tf.contrib.rnn.BasicLSTMCell(size)
             cell = single_cell()
+
             if keep_prob < 1:
                 print('Generator Dropout %f' % keep_prob)
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keep_prob)

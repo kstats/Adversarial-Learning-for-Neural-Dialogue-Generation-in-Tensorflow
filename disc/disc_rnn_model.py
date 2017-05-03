@@ -27,22 +27,22 @@ class disc_rnn_model(object):
             self._batch_size_update = tf.assign(self.batch_size,self.new_batch_size)
 
             #build LSTM network
-            lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(hidden_neural_size,forget_bias=0.0,state_is_tuple=True)
+            lstm_cell = tf.contrib.rnn.core_rnn_cell.BasicLSTMCell(hidden_neural_size,forget_bias=0.0,state_is_tuple=True)
             if self.keep_prob<1:
                 lstm_cell =  tf.nn.rnn_cell.DropoutWrapper(
                     lstm_cell,output_keep_prob=self.keep_prob
                 )
 
-            cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell]*hidden_layer_num,state_is_tuple=True)
+            cell = tf.contrib.rnn.core_rnn_cell.MultiRNNCell([lstm_cell]*hidden_layer_num,state_is_tuple=True)
 
             #builds second LSTM network
-            lstm_cell2 = tf.nn.rnn_cell.BasicLSTMCell(hidden_neural_size, forget_bias=0.0, state_is_tuple=True)
+            lstm_cell2 = tf.contrib.rnn.core_rnn_cell.BasicLSTMCell(hidden_neural_size, forget_bias=0.0, state_is_tuple=True)
             if self.keep_prob < 1:
                 lstm_cell2 = tf.nn.rnn_cell.DropoutWrapper(
                     lstm_cell2, output_keep_prob=self.keep_prob
                 )
 
-            cell2 = tf.nn.rnn_cell.MultiRNNCell([lstm_cell2] * hidden_layer_num, state_is_tuple=True)
+            cell2 = tf.contrib.rnn.core_rnn_cell.MultiRNNCell([lstm_cell2] * hidden_layer_num, state_is_tuple=True)
 
             self._initial_state = cell.zero_state(self.batch_size,dtype=tf.float32)
 
@@ -88,22 +88,25 @@ class disc_rnn_model(object):
                 self.output2 = extract_axis_1(self.out_put2_test,self.mask_r_len-1)
                 out_put2 = self.output2
 
-            if not isLstm:
+            #if not isLstm:
+            with tf.variable_scope("Combine_LSTM"):
+                cat_input = tf.concat([out_put1, out_put2],1)
+                self.lstm_w = tf.get_variable("lstm_w", [cat_input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
+                out_put = tf.nn.relu(tf.matmul(cat_input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
+                #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
+            '''else:
                 with tf.variable_scope("Combine_LSTM"):
-                    cat_input = tf.concat(1, [out_put1, out_put2])
-                    self.lstm_w = tf.get_variable("lstm_w", [cat_input.get_shape()[1], hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
-                    lstm_b = tf.get_variable("lstm_b", [hidden_neural_size], dtype=tf.float32, initializer=tf.random_normal_initializer())
-                    out_put = tf.nn.relu(tf.matmul(cat_input,self.lstm_w)+lstm_b)  #tf.layers.dense(inputs=input, units=1024, activation=tf.nn.relu)
-                    #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
-            else:
-                lstm_cell3 = tf.nn.rnn_cell.BasicLSTMCell(hidden_neural_size, forget_bias=0.0, state_is_tuple=True)
-                if self.keep_prob < 1:
-                    lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
-                        lstm_cell3, output_keep_prob=self.keep_prob
-                    )
-                cell3 = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * hidden_layer_num, state_is_tuple=True)
-                self._initial_state3 = cell3.zero_state(self.batch_size, dtype=tf.float32)
-                with tf.variable_scope("Combine_LSTM"):
+                    lstm_cell3 = tf.contrib.rnn.core_rnn_cell.BasicLSTMCell(hidden_neural_size, forget_bias=0.0,
+                                                                            state_is_tuple=True)
+                    if self.keep_prob < 1:
+                        lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
+                            lstm_cell3, output_keep_prob=self.keep_prob
+                        )
+                    cell3 = tf.contrib.rnn.core_rnn_cell.MultiRNNCell([lstm_cell3] * hidden_layer_num,
+                                                                      state_is_tuple=True)
+                    self._initial_state3 = cell3.zero_state(self.batch_size, dtype=tf.float32)
+
                     #self.comb_inputs = tf.Variable(tf.zeros([None, 2, hidden_neural_size]), name="combined_input")
                     #self.comb_inputs[:,0,:] = out_put1
                     #self.comb_inputs[:,1,:] = out_put2
@@ -115,14 +118,14 @@ class disc_rnn_model(object):
                                                                  initial_state=self._initial_state3)
                     out_put = extract_axis_1(self.out_put3_test, tf.ones([self.batch_size], dtype=tf.int32))
                     #dropout = tf.layers.dropout(inputs=dense, rate=0.4, training=mode == learn.ModeKeys.TRAIN)
-
+'''
             with tf.name_scope("Softmax_layer_and_output"):
                 softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,class_num],dtype=tf.float32, initializer=tf.random_normal_initializer())
                 softmax_b = tf.get_variable("softmax_b",[class_num],dtype=tf.float32, initializer=tf.random_normal_initializer())
                 self.logits = tf.matmul(out_put,softmax_w)+softmax_b
 
             with tf.name_scope("loss"):
-                self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(self.logits+1e-10,self.target)
+                self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits+1e-10,labels=self.target)
                 self.cost = tf.reduce_mean(self.loss)
 
             with tf.name_scope("accuracy"):

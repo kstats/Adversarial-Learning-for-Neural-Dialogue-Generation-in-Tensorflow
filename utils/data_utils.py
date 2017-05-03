@@ -499,9 +499,6 @@ def convert_to_format(dataset):
                 np.stack([dataset['c_mask'], dataset['r_mask']], axis = 2))   # mask is maxlen * batch * 2 [2 is ctx,response]
 
 
-def set_dataset_path(path):
-    dataset_path = path
-
 
 def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1):
  
@@ -539,4 +536,36 @@ def batch_iter(data,batch_size):
         return_y = y[start_index:end_index]
         return_mask_x = mask_x[:,start_index:end_index]
         yield (return_x,return_y,return_mask_x)
-   
+
+  
+def read_data(dataset, _buckets, max_size=None):
+    
+    data_set = [[] for _ in _buckets]
+    for i in range(dataset['len']):
+        if (max_size and i > max_size):
+            break
+        source_ids = dataset['context'][i]
+        target_ids = dataset['response'][i]
+
+        target_ids.append(EOS_ID)
+        for bucket_id, (source_size, target_size) in enumerate(_buckets): 
+            if len(source_ids) < source_size and len(target_ids) < target_size:
+                data_set[bucket_id].append([source_ids, target_ids])
+                break
+    return data_set
+
+def prepare_data(gen_config):
+    
+    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
+    vocab, rev_vocab            = initialize_vocabulary(gen_config.vocab_path)
+    dataset                     = create_dataset(train_path, is_disc = False)
+    train_dataset, dev_dataset  = split_dataset(dataset, ratio = gen_config.train_ratio )
+
+    # Read data into buckets and compute their sizes.
+    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
+    train_set, dev_set = read_data(train_dataset, gen_config.buckets, gen_config.max_train_data_size), read_data(dev_dataset, gen_config.buckets)
+
+    return vocab, rev_vocab, dev_set, train_set
+
+
+  

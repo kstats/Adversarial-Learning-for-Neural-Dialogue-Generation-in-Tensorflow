@@ -22,9 +22,7 @@ def gen_pre_train():
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                gen_inputs, gen_outputs, mc_search=mc_search)
-    sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
-                                               gen_inputs, gen_outputs, mc_search=True)
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
 
     print("disc_train_data, mc_search: ", mc_search)
     rem_set = []
@@ -118,7 +116,7 @@ def disc_pre_train():
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
         #import pdb; pdb.set_trace()
-        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -201,7 +199,7 @@ def al_train():
         with tf.variable_scope("model",reuse=None,initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
-        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -255,10 +253,38 @@ def al_train():
 def main(_):
     seed = int(time.time())
     np.random.seed(seed)  
-    
-    # disc_pre_train()
-    gen_pre_train2()
-    # al_train()
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('train_type', type=str)
+    parser.add_argument('--gen_file', type=str)
+    parser.add_argument('--disc_file', type=str)
+    args = parser.parse_args()
+
+    if (args.disc_file):
+        conf.disc_config.train_data_file = args.disc_file
+
+    if (args.gen_file):
+        conf.gen_config.train_data_file = args.gen_file
+ 
+    if args.train_type == 'disc': 
+        print ("Runinng Discriminator Pre-Train") 
+        disc_pre_train()
+    elif args.train_type == 'gen':
+        print ("Runinng Generator Pre-Train")
+        gen_pre_train()
+    elif args.train_type == 'gen2':
+        print ("Runinng Generator Pre-Train 2")
+        gen_pre_train2()
+    else:
+        print ("Runinng Adversarial")        
+        al_train()
+
+   
+
+
+
+
 
 if __name__ == "__main__":
     tf.app.run()

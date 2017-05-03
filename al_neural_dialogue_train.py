@@ -232,7 +232,7 @@ def al_train():
             dec_gen = np.reshape(dec_gen, (-1,1))
             gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
 
-'''dec_gen = []
+            '''dec_gen = []
             for i in range(len(responses)):
                 dec_gen.append(responses[i][:gen_config.buckets[bucket_id][1][0]])
                 if len(dec_gen)< gen_config.buckets[bucket_id][1]:
@@ -240,6 +240,7 @@ def al_train():
             dec_gen = np.reshape(dec_gen, (-1,gen_config.batch_size,1))'''
 
             # 5.Teacher-Forcing: Update G on (X, Y )
+
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
             print("loss: ", loss)
 

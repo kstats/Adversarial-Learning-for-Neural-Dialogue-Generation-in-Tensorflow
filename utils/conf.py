@@ -16,7 +16,7 @@ class disc_config(object):
 
     train_dir                   = 'data/'
     train_data_file             = "training500k.txt"
-    max_len                     = 40
+    max_len                     = 50
     out_dir                     = os.path.abspath(os.path.join(os.path.curdir,"runs"))
 
     checkpoint_num              = 1000 

@@ -28,7 +28,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
     sample_response2[1] = [sample_response2[1]]
     responses2 = [responses2]
     print("disc_train_data, mc_search: ", mc_search)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     rem_set = []
     for i in range(len(sample_labels)):
         if sample_labels[i] == 1:
@@ -235,17 +235,22 @@ def al_train():
             encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
 
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
+            # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
+            #                                             source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
             train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
+                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=False, isDisc=False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
-            reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
-
+            reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
+            print("Step %d, here are the discriminator logits:" % gstep)
+            print(reward)
             # 4.Update G on (X, ^Y ) using reward r
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
                 dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
             dec_gen = np.reshape(dec_gen, (-1,1))
-            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
+            # gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
+            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = True, reward = reward[:,1])
+
 
             '''dec_gen = []
             for i in range(len(responses)):

@@ -210,6 +210,8 @@ class Seq2SeqModel(object):
                       self.do_projection.name: projection,
                       self.tf_bucket_id: bucket_id}
 
+        if reward is not None:
+          import pdb; pdb.set_trace()
         for l in xrange(len(self.buckets)):
             input_feed[self.reward[l].name] = reward if reward else 1
 
@@ -235,6 +237,7 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif not forward_only and projection:               #We are not in feed farward but want projection
+            import pdb; pdb.set_trace()
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

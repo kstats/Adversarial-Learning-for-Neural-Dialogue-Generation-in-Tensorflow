@@ -259,13 +259,22 @@ def main(_):
     parser.add_argument('train_type', type=str)
     parser.add_argument('--gen_file', type=str)
     parser.add_argument('--disc_file', type=str)
+    parser.add_argument('--gen_prob', type=float)
+    parser.add_argument('--disc_prob', type=float)
+
     args = parser.parse_args()
+
+    if (args.gen_file):
+        conf.gen_config.train_data_file = args.gen_file
+
+    if(args.gen_prob):
+        conf.gen_config.keep_prob = args.gen_prob
 
     if (args.disc_file):
         conf.disc_config.train_data_file = args.disc_file
 
-    if (args.gen_file):
-        conf.gen_config.train_data_file = args.gen_file
+    if(args.disc_prob):
+        conf.disc_config.keep_prob = args.disc_prob
  
     if args.train_type == 'disc': 
         print ("Runinng Discriminator Pre-Train") 
@@ -279,11 +288,6 @@ def main(_):
     else:
         print ("Runinng Adversarial")        
         al_train()
-
-   
-
-
-
 
 
 if __name__ == "__main__":

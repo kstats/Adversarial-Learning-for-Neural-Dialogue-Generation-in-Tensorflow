@@ -45,7 +45,7 @@ def create_model(session, config, is_training):
             session.run(tf.global_variables_initializer())
 
     end_time    = time.time()
-    print("Time to create Gen_RNN model: %.2f" % (end_time - start_time))
+    print("Time to create Disc_RNN model: %.2f" % (end_time - start_time))
 
     return model
 

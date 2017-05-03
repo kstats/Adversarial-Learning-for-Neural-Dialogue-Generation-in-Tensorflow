@@ -21,42 +21,10 @@ import gen.gen_model as seq2seq_model
 from tensorflow.python.platform import gfile
 
 sys.path.append('../utils')
-import utils.data_utils as du
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
 _buckets = conf.gen_config.buckets
-
-
-def read_data(dataset, max_size=None):
-    
-    data_set = [[] for _ in _buckets]
-    for i in range(dataset['len']):
-        if (max_size and i > max_size):
-            break
-        source_ids = dataset['context'][i]
-        target_ids = dataset['response'][i]
-
-        target_ids.append(data_utils.EOS_ID)
-        for bucket_id, (source_size, target_size) in enumerate(_buckets): 
-            if len(source_ids) < source_size and len(target_ids) < target_size:
-                data_set[bucket_id].append([source_ids, target_ids])
-                break
-    return data_set
-
-def prepare_data(gen_config):
-    
-    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
-    vocab, rev_vocab            = data_utils.initialize_vocabulary(gen_config.vocab_path)
-
-    dataset                     = data_utils.create_dataset(train_path, is_disc = False)
-    train_dataset, dev_dataset  = data_utils.split_dataset(dataset, ratio = gen_config.train_ratio )
-
-    # Read data into buckets and compute their sizes.
-    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
-    train_set, dev_set = read_data(train_dataset, gen_config.max_train_data_size), read_data(dev_dataset)
-
-    return vocab, rev_vocab, dev_set, train_set
 
 
 def create_model(session, gen_config):
@@ -84,7 +52,7 @@ def softmax(x):
 
 
 def train(gen_config):
-    vocab, rev_vocab, dev_set, train_set = prepare_data(gen_config)
+    vocab, rev_vocab, dev_set, train_set = data_utils.prepare_data(gen_config)
 
     with tf.Session() as sess:
         # Create model.
@@ -182,6 +150,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
         for logits in np.transpose(output_logits, (1,0,2)):
             selected_token_ids.append([int(np.argmax(logit, axis=0)) for logit in logits])
         
+        #Remove Multiple EOS 
         for b_id, s_t_id in enumerate(selected_token_ids):
             eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
             selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 
@@ -198,7 +167,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     if debug: print("\n[get_batch]\n", encoder_inputs, decoder_inputs, target_weights)
 
     ### Original greedy decoding
-    if beam_size == 1 or (not mc_search):
+    if beam_size == 1 or (not mc_search): 
         _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 

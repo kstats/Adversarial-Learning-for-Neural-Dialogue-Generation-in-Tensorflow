@@ -111,7 +111,7 @@ def disc_pre_train():
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
         #import pdb; pdb.set_trace()
-        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -155,7 +155,7 @@ def gen_pre_train2():
         with tf.variable_scope("model",reuse=None,initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
-        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -183,7 +183,7 @@ def al_train():
         with tf.variable_scope("model",reuse=None,initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
-        vocab, rev_vocab, dev_set, train_set = gens.prepare_data(gen_config)
+        vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
@@ -239,7 +239,6 @@ def main(_):
     seed = int(time.time())
     np.random.seed(seed)  
 
-    
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('train_type', type=str)

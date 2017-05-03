@@ -73,41 +73,33 @@ def evaluate(model,session,data, batch_size,global_steps=None,summary_writer=Non
     return accuracy
 
 def run_epoch(model,session,data,global_steps,valid_model,valid_data, batch_size, checkpoint_prefix, train_summary_writer, valid_summary_writer=None):
+    
     for step, (x,y,mask_x) in enumerate(data_utils.batch_iter(data,batch_size=batch_size)):
         feed_dict={}
 
-        feed_dict[model.context]=x[:,0,:]
+        feed_dict[model.context]  = x[:,0,:]
         feed_dict[model.response] = x[:,1,:]
-        feed_dict[model.target]=y
+        feed_dict[model.target]   = y
 
-        feed_dict[model.mask_c]=mask_x[:,:,0]
-        feed_dict[model.mask_r]=mask_x[:,:,1]
+        feed_dict[model.mask_c]   = mask_x[:,:,0]
+        feed_dict[model.mask_r]   = mask_x[:,:,1]
+
         model.assign_new_batch_size(session,len(x))
+        
         fetches = [model.cost,model.accuracy,model.train_op,model.summary, model.prediction, model.logits,  model.grads]
-        # state = session.run(model._initial_state)
-        #for i , (c,h) in enumerate(model._initial_state):
-         #   feed_dict[c]=state[i].c
-          #  feed_dict[h]=state[i].h
         cost,accuracy,_,summary, pred, logits, grads  = session.run(fetches,feed_dict)
-        # print (y)
-        # print (pred)
-        # print(logits)        
-        # print(w)
-        # print 'Printing grads!!\n\n\n'
-        # print(grads)
-
-
-        #print (logits)
-        #print (tf.argmax(logits,1))
 
         train_summary_writer.add_summary(summary,global_steps)
         train_summary_writer.flush()
         valid_accuracy=evaluate(valid_model,session,valid_data,batch_size,global_steps,valid_summary_writer)
+        
         if(global_steps%10==0):
-            print("the %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(model.global_step.eval(),cost,accuracy,valid_accuracy))
+            print("The %i step, train cost is: %f and the train accuracy is %f and the valid accuracy is %f"%(model.global_step.eval(),cost,accuracy,valid_accuracy))
+        
         if(global_steps%200==0):
             path = model.saver.save(session,checkpoint_prefix,global_step=model.global_step)
             print("Saved model chechpoint to{}\n".format(path))
+        
         global_steps+=1
 
     return global_steps
@@ -149,7 +141,7 @@ def train_step(config_disc, config_evl):
         begin_time=int(time.time())
 
         for i in range(config.num_epoch):
-            print("the %d epoch training..."%(i+1))
+            print("The %d epoch training..."%(i+1))
             lr_decay = config.lr_decay ** max(i-config.max_decay_epoch,0.0)
             model.assign_new_lr(session,config.lr*lr_decay)
             global_steps=run_epoch(model,session,train_data,global_steps,valid_model,

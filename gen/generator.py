@@ -7,7 +7,7 @@ import os
 import random
 import sys
 import time
-import pickle
+#import pickle
 import heapq
 import tensorflow.python.platform
 
@@ -16,7 +16,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 import utils.data_utils as data_utils
-import utils.conf as conf
+#import utils.conf as conf
 import gen.gen_model as seq2seq_model
 from tensorflow.python.platform import gfile
 
@@ -24,14 +24,14 @@ sys.path.append('../utils')
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
-_buckets = conf.gen_config.buckets
+#_buckets = conf.gen_config.buckets
 
 
 def create_model(session, gen_config):
     start_time  = time.time()        
     """Create generation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
-                gen_config.vocab_size, gen_config.vocab_size, _buckets,
+                gen_config.vocab_size, gen_config.vocab_size, gen_config.buckets,
                 gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
                 gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob)
 
@@ -61,7 +61,7 @@ def train(gen_config):
 
     with tf.Session() as sess:
         # Create model.
-        train_bucket_sizes  = [len(train_set[b]) for b in xrange(len(_buckets))]
+        train_bucket_sizes  = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size    = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
@@ -314,7 +314,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
-        responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
+        responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, gen_config.buckets, mc_search)
 
         for resp in responses:
             if gen_config.beam_size == 1 or (not mc_search):

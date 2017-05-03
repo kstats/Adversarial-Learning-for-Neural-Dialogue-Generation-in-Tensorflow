@@ -5,7 +5,7 @@ import time
 import datetime
 import disc_rnn_model as disc_rnn_model
 import utils.data_utils as data_utils
-import utils.conf as conf
+#import utils.conf as conf
 import sys
 sys.path.append('../utils')
 

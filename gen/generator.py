@@ -28,6 +28,7 @@ _buckets = conf.gen_config.buckets
 
 
 def create_model(session, gen_config):
+    start_time  = time.time()        
     """Create generation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
                 gen_config.vocab_size, gen_config.vocab_size, _buckets,
@@ -44,6 +45,10 @@ def create_model(session, gen_config):
     else:
         print("Created Gen_RNN model with fresh parameters.")
         session.run(tf.global_variables_initializer())
+    
+    end_time    = time.time()
+    print("Time to create Gen_RNN model: %.2f" % (end_time - start_time))
+
     return model
 
 
@@ -61,11 +66,8 @@ def train(gen_config):
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
         print("Creating %d layers of %d units." % (gen_config.num_layers, gen_config.size))
-        start_time  = time.time()        
         model       = create_model(sess, gen_config)
-        end_time    = time.time()
-        print("Time to create Gen_RNN model: %.2f" % (end_time - start_time))
-
+      
 
         # This is the training loop.
         step_time, loss = 0.0, 0.0

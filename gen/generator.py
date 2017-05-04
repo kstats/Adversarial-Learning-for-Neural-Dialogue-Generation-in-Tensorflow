@@ -349,6 +349,8 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, nu
             sample_response.append(ret)
             sample_context.append(con)
             sample_labels.append(0)
+            print ("Sampled response: ")
+            print (ret)
             rep.append(ret)
 
     return sample_context, sample_response, sample_labels, rep

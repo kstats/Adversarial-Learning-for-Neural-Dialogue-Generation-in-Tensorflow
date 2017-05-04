@@ -21,13 +21,13 @@ def gen_pre_train():
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True):
-    sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
-                                               gen_inputs, gen_outputs, mc_search=mc_search)
-    sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
+    # sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
+    #                                            gen_inputs, gen_outputs, mc_search=mc_search)
+    sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
 
-    sample_response2[1] = [sample_response2[1]]
+    sample_response[1] = [sample_response[1]]
     #import pdb; pdb.set_trace()
-    responses2 = [responses2]
+    responses = [responses]
     print("disc_train_data, mc_search: ", mc_search)
     # import pdb; pdb.set_trace()
     rem_set = []
@@ -184,7 +184,7 @@ def gen_pre_train2():
 
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
             train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False)
+                                                        source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False, temp=False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
             print("Step %d, here are the discriminator logits:" % gstep)
@@ -228,46 +228,54 @@ def al_train():
             gstep += 1
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                          if train_buckets_scale[i] > random_number_01])
-            #import pdb; pdb.set_trace()
-            print("===========================Update Discriminator================================")
-            # 1.Sample (X,Y) from real data
-            _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
-            #1.5 sample x,y from data to generate samples from
-            _, _, _, gen_inputs, gen_outputs = gen_model.get_batch(train_set, bucket_id, 0)
-            # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
-            train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True)
-            # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
-            disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
-            disc_loss.append(disc_l)
-            pickle.dump(disc_loss, open("disc_loss.p", "wb"))
 
-            print("===============================Update Generator================================")
-            # 1.Sample (X,Y) from real data
-            update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)
-            encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
+            for i in range(disc_config.iters):
+                #import pdb; pdb.set_trace()
+                print("===========================Update Discriminator %d.%d=============================" % (gstep,i))
+                # 1.Sample (X,Y) from real data
+                _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
+                #1.5 sample x,y from data to generate samples from
+                _, _, _, gen_inputs, gen_outputs = gen_model.get_batch(train_set, bucket_id, 0)
+                # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
+                train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
+                                                            source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True)
+                # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
+                print('Discriminator input/labels:')
+                print(train_inputs)
+                print(train_labels)
+                disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+                disc_loss.append(disc_l)
+                pickle.dump(disc_loss, open("disc_loss.p", "wb"))
 
-            # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
-            # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-            #                                             source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
-            train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=False, isDisc=False, temp=False)
-            # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
-            reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
-            print("Step %d, here are the discriminator logits:" % gstep)
-            steps.append(gstep)
-            pickle.dump(steps, open("steps.p", "wb"))
+            for i in range(gen_config.iters):
+                print("===============================Update Generator %d.%d=============================" % (gstep,i))
+                # 1.Sample (X,Y) from real data
+                update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)
+                encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
 
-            print(reward)
-            rewards.append(reward)
-            pickle.dump(rewards, open("rewards.p", "wb"))
-            # 4.Update G on (X, ^Y ) using reward r
-            dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
-            if len(dec_gen)< gen_config.buckets[bucket_id][1]:
-                dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
-            dec_gen = np.reshape(dec_gen, (-1,1))
-            # gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = False, reward = reward)
-            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = True, reward = reward[:,1])
+                # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
+                # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
+                #                                             source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
+                train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
+                                                            source_inputs,source_outputs,source_inputs,source_outputs, mc_search=False, isDisc=False, temp=False)
+                # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
+                reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)                
+                print("Step %d, here are the discriminator inputs/labels on which we calculate reward:" % gstep)
+                print(train_inputs)
+                print(train_labels)
+                print("Step %d, here are the discriminator logits:" % gstep)
+                steps.append(gstep)
+                pickle.dump(steps, open("steps.p", "wb"))                
+
+                print(reward)
+                rewards.append(reward)
+                pickle.dump(rewards, open("rewards.p", "wb"))
+                # 4.Update G on (X, ^Y ) using reward r
+                dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
+                if len(dec_gen)< gen_config.buckets[bucket_id][1]:
+                    dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
+                dec_gen = np.reshape(dec_gen, (-1,1))
+                gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = True, reward = reward[:,1])
 
 
             '''dec_gen = []
@@ -279,10 +287,13 @@ def al_train():
 
             # 5.Teacher-Forcing: Update G on (X, Y )
 
-            _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
-            print("loss: ", loss)
-            perplexity.append(loss)
-            pickle.dump(perplexity, open("perplexity.p", "wb"))
+            for i in range(gen_config.force_iters):
+                print("===========================Force Generator %d.%d=============================" % (gstep,i))            
+                _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
+            
+            # print("loss: ", loss)
+            # perplexity.append(loss)
+            # pickle.dump(perplexity, open("perplexity.p", "wb"))
 
         #add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

@@ -227,7 +227,7 @@ class Seq2SeqModel(object):
         # Since our targets are decoder inputs shifted by one, we need one more.
         input_feed[self.decoder_inputs[decoder_size].name] = np.zeros([self.batch_size], dtype=np.int32)
 
-        
+        #import pdb; pdb.set_trace()
         # Output feed: depends on whether we do a backward step or not.
         if not forward_only and not projection:            # normal training
             output_feed = [self.updates[bucket_id],           # Update Op that does SGD.
@@ -240,7 +240,6 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif not forward_only and projection:               #We are not in feed farward but want projection
-            # import pdb; pdb.set_trace()
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

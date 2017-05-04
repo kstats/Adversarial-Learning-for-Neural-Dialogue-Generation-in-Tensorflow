@@ -20,12 +20,13 @@ def gen_pre_train():
     gens.train(gen_config)
 
 # prepare data for discriminator and generator
-def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True):
+def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True):
     sample_context, sample_response, sample_labels, responses = gens.gen_sample(sess, gen_config, gen_model, vocab,
                                                gen_inputs, gen_outputs, mc_search=mc_search)
     sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
 
     sample_response2[1] = [sample_response2[1]]
+    #import pdb; pdb.set_trace()
     responses2 = [responses2]
     print("disc_train_data, mc_search: ", mc_search)
     # import pdb; pdb.set_trace()
@@ -42,9 +43,13 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
 
     dataset = {}
     dataset['is_disc']  = True
-    dataset['label']    = np.array([1] * (len(source_inputs)-1))
-    for i in range(len(sample_response)):
-        dataset['label'] = np.append(dataset['label'], 0)
+    if temp:
+        dataset['label']    = np.array([1] * (len(source_inputs)))
+        for i in range(len(responses)):
+            dataset['label'] = np.append(dataset['label'], 0)
+    else:
+        dataset['label'] = np.array([0])
+
 
     dataset['context'] = source_inputs if isDisc else []
     for context in sample_context:
@@ -144,7 +149,7 @@ def disc_pre_train():
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
                                                                          source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
-            disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+            disc_step(sess, disc_model, train_inputs, train_labels, train_masks, isTrain = False)
 
             if gstep > 0 and gstep % 600 == 0:
                 sess.run(disc_model.lr.assign(disc_model.lr.eval()*0.6),[])
@@ -185,7 +190,7 @@ def gen_pre_train2():
             print("Step %d, here are the discriminator logits:" % gstep)
             print(reward)
             steps.append(gstep)
-            rewards.append(reward[0][1])
+            rewards.append(reward)
             pickle.dump(steps, open("steps.p", "wb"))
             pickle.dump(rewards, open("rewards.p","wb"))
             # Change data back into generator format
@@ -213,8 +218,14 @@ def al_train():
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
 
+        rewards = []
+        steps = []
+        perplexity = []
+        disc_loss = []
+        gstep = 0
         while True:
             random_number_01 = np.random.random_sample()
+            gstep += 1
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                          if train_buckets_scale[i] > random_number_01])
             #import pdb; pdb.set_trace()
@@ -225,9 +236,11 @@ def al_train():
             _, _, _, gen_inputs, gen_outputs = gen_model.get_batch(train_set, bucket_id, 0)
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False, isDisc=True)
+                                                        source_inputs,source_outputs,gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
-            disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+            disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+            disc_loss.append(disc_l)
+            pickle.dump(disc_loss, open("disc_loss.p", "wb"))
 
             print("===============================Update Generator================================")
             # 1.Sample (X,Y) from real data
@@ -238,11 +251,16 @@ def al_train():
             # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
             #                                             source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
             train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=False, isDisc=False)
+                                                        source_inputs,source_outputs,source_inputs,source_outputs, mc_search=False, isDisc=False, temp=False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
             print("Step %d, here are the discriminator logits:" % gstep)
+            steps.append(gstep)
+            pickle.dump(steps, open("steps.p", "wb"))
+
             print(reward)
+            rewards.append(reward)
+            pickle.dump(rewards, open("rewards.p", "wb"))
             # 4.Update G on (X, ^Y ) using reward r
             dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
             if len(dec_gen)< gen_config.buckets[bucket_id][1]:
@@ -263,6 +281,8 @@ def al_train():
 
             _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
             print("loss: ", loss)
+            perplexity.append(loss)
+            pickle.dump(perplexity, open("perplexity.p", "wb"))
 
         #add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

@@ -217,8 +217,8 @@ class Seq2SeqModel(object):
                            " %d != %d." % (len(target_weights), decoder_size))
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
-        input_feed = {self.forward_only.name : mode is SM_EVAL,
-                      self.do_projection.name: mode is not SM_TRAIN,
+        input_feed = {self.forward_only.name : mode is self.SM_EVAL,
+                      self.do_projection.name: mode is not self.SM_TRAIN,
                       self.tf_bucket_id: bucket_id}
         
         for l in xrange(len(self.buckets)):
@@ -235,34 +235,34 @@ class Seq2SeqModel(object):
 
         #import pdb; pdb.set_trace()
         # Output feed: depends on whether we do a backward step or not.
-        if mode is SM_TRAIN:            # normal training
+        if mode is self.SM_TRAIN:            # normal training
             output_feed = [self.updates[bucket_id],           # Update Op that does SGD.
                            self.gradient_norms[bucket_id],    # Gradient norm.
                            self.losses[bucket_id]]            # Loss for this batch.
 
-        elif mode is SM_EVAL:                   # testing or reinforcement learning
+        elif mode is self.SM_EVAL:                   # testing or reinforcement learning
             output_feed = [self.encoder_state[bucket_id], 
                            self.losses[bucket_id]]          # Loss for this batch.
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
-        elif mode is SM_POLICY_TRAIN:               #We are not in feed farward but want projection
+        elif mode is self.SM_POLICY_TRAIN:               #We are not in feed farward but want projection
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
-        elif mode is SM_SAMPLE:               #We are not in feed farward but want projection
+        elif mode is self.SM_SAMPLE:               #We are not in feed farward but want projection
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         else:
             raise ValueError("forward_only and no projection is illegal")
             
         outputs = session.run(output_feed, input_feed)
-        if mode is SM_TRAIN:
+        if mode is self.SM_TRAIN:
           return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
-        elif mode is SM_POLICY_TRAIN:
+        elif mode is self.SM_POLICY_TRAIN:
           return outputs[1:]
-        elif mode is SM_SAMPLE:
+        elif mode is self.SM_SAMPLE:
           return outputs
-        elif mode is SM_EVAL:
+        elif mode is self.SM_EVAL:
           return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 
 

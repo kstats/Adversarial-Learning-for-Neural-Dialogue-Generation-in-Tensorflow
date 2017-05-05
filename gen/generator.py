@@ -141,7 +141,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
                             beam_size, buckets, mc_search=True,debug=False):
     
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
+        logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         prob          = softmax(logits[dptr][0])
         return prob
 
@@ -223,7 +223,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
+        logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         prob = softmax(logits[dptr][0])
         return prob
 

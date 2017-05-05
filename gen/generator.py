@@ -89,7 +89,7 @@ def train(gen_config):
             encoder_inputs, decoder_inputs, target_weights, batch_source_encoder, batch_source_decoder = model.get_batch(
                 train_set, bucket_id, 0)
 
-            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection = False)
+            _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, mode=model.SM_TRAIN)
             
             #Uncomment to debug  forward_only = False, projection=True mode  
             # q, outputs_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = False, projection=True)
@@ -141,7 +141,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
                             beam_size, buckets, mc_search=True,debug=False):
     
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only = True)
+        logits  = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         prob          = softmax(logits[dptr][0])
         return prob
 
@@ -170,7 +170,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 
     ### Original greedy decoding
     if beam_size == 1 or (not mc_search): 
-        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only = True)
+        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, mode=model.SM_EVAL)
         # import pdb; pdb.set_trace()
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 
@@ -223,7 +223,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only=True)
+        logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         prob = softmax(logits[dptr][0])
         return prob
 
@@ -349,7 +349,8 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, nu
             sample_response.append(ret)
             sample_context.append(con)
             sample_labels.append(0)
-            print ("Sampled response: ")
+            print ("Sampled response (of length %d): " % len(ret))
+
             print (ret)
             rep.append(ret)
 

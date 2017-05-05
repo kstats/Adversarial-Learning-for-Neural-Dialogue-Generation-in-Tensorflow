@@ -225,6 +225,7 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
         logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
+        #TODO fix this to not just take the first item in the batch...
         prob = softmax(logits[dptr][0])
         return prob
 
@@ -236,6 +237,15 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     feed_data = {bucket_id: [(input_token_ids, outputs)]}
     #decoder inputs are just "go"
     encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
+    #Hacky way to get around both batching and sampling
+    #Rencoder_inputs = np.array(encoder_inputs)[:,0]
+    #decoder_inputs = np.array(decoder_inputs)[:,0]
+    #target_weights = np.array(target_weights)[:,0]
+
+
+    for n in range(len(encoder_inputs)): encoder_inputs[n] = np.array([encoder_inputs[n][0]])
+    for n in range(len(decoder_inputs)): decoder_inputs[n] = np.array([decoder_inputs[n][0]])
+    for n in range(len(target_weights)): target_weights[n] = np.array([target_weights[n][0]])
 
     decoder_len = buckets[bucket_id][1]
     #target_weights = np.zeros(decoder_len)
@@ -341,6 +351,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     pass
 
 def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, num_samples=1):
+    #import pdb; pdb.set_trace()
     sample_context = []
     sample_response = []
     sample_labels = []
@@ -351,7 +362,7 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, nu
         sample_labels.append(1)
         for i in range(num_samples):
             ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
-            sample_response.append(ret)
+            sample_response.append([ret])
             sample_context.append(con)
             sample_labels.append(0)
             print ("Sampled response (of length %d): " % len(ret))

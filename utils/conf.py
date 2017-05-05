@@ -35,14 +35,14 @@ class gen_config(object):
     learning_rate_decay_factor  = 0.99
     max_gradient_norm           = 5.0
     keep_prob                   = 1.0    
-    batch_size                  = 5 
+    batch_size                  = 5
     beam_size                   = 5
 
     vocab_path                  = './data/movie_25000'
     vocab_size                  = 25003
     
     data_dir                    = "data/"
-    train_data_file             = "training500k.txt"
+    train_data_file             = "training200k.txt"
     train_ratio                 = 0.9    
     max_train_data_size         = 0
     train_dir                   = "data/"

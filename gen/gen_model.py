@@ -183,7 +183,7 @@ class Seq2SeqModel(object):
 
             for b in xrange(len(buckets)):
                 adjusted_losses         = tf.mul(self.losses[b], self.reward[b])
-                policy_losses           = tf.mul(tf.log(self.output_q[b]), tf.cast(self.reward[b],tf.float64))
+                policy_losses           = -tf.mul(tf.log(self.output_q[b]), tf.cast(self.reward[b],tf.float64))
                 gradients               = tf.gradients(adjusted_losses, self.tvars)
                 policy_gradients        = tf.gradients(policy_losses,self.tvars)
                 clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)

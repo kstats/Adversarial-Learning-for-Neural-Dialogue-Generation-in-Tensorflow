@@ -3,7 +3,7 @@ class disc_config(object):
     
     hidden_layer_num            = 1
     hidden_neural_size          = 512
-    lr                          = 0.5
+    lr                          = 0.1
     lr_decay                    = 0.6
     max_grad_norm               = 5    
     keep_prob                   = 1.  
@@ -24,7 +24,7 @@ class disc_config(object):
     num_epoch                   = 60
     max_decay_epoch             = 30
 
-    iters                       = 1      
+    iters                       = 1
    # valid_num                   = 100
 
 class gen_config(object):
@@ -50,6 +50,6 @@ class gen_config(object):
     steps_per_checkpoint        = 8000
     steps_per_sample            = 150
     
-    iters                       = 10
+    iters                       = 1
     force_iters                 = 0
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

@@ -157,6 +157,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
             eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
             selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 
 
+        import pdb; pdb.set_trace()
         return selected_token_ids
 
     # Which bucket does it belong to?
@@ -245,9 +246,12 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     #TODO fix this to work with buckets
     # for dptr in range(decoder_len - 1):
     for dptr in range(decoder_len):
+        # import pdb; pdb.set_trace()
         if dptr > 0:
-           target_weights[dptr] = [1.]
-           beams, new_beams = new_beams[:1], []
+            if not new_beams:
+              break
+            target_weights[dptr] = [1.]
+            beams, new_beams = new_beams[:1], []
         #if debug: print("=====[beams]=====", beams)
         #heapq.heapify(beams)  # since we will srot and remove something to keep N elements
         for prob, cand in beams:
@@ -261,10 +265,10 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
 
 
             # suppress copy-cat (respond the same as input)
-            if dptr < len(encoder_inputs):
-                all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
+            # if dptr < len(encoder_inputs):
+            #     all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
 
-            all_prob = softmax(all_prob)
+            # all_prob = softmax(all_prob)
             ca = np.where(np.random.multinomial(1, all_prob))[0][0]
             #TODO Change this to sample
 
@@ -298,6 +302,7 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     # post-process results
     res_cands = []
     #for prob, cand in sorted(results, reverse=True):
+    # import pdb; pdb.set_trace()
     temp = beams[0][1]['dec_inp']
     temp2 = [te[0] for te in temp]
     temp2.pop(0)

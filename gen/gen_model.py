@@ -122,7 +122,8 @@ class Seq2SeqModel(object):
            
             self.output_q = []
             # self.test_inps = []
-            # self.test_probs = []
+            self.test_probs = []
+            self.test_probs1 = []
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
                 for b_id in xrange(len(self.buckets)):
@@ -155,15 +156,16 @@ class Seq2SeqModel(object):
                     blen = buckets[b_id][1]
                     inps = tf.pack(self.decoder_inputs[1:blen])
                     # self.test_inps.append(inps)
-                    self.output_q.append(tf.ones(batch_size,dtype=tf.float32))
-                    # self.test_probs.append([])
+                    self.output_q.append(tf.ones(batch_size,dtype=tf.float64))
+                    self.test_probs.append([])
                     for i in xrange(blen-1):
                         ind = inps[i,:]                           
                         ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
                         prob = tf.gather_nd(tf.nn.softmax(self.outputs[b_id][i]),ind)
+                        self.test_probs[b_id].append(prob)
                         pads = tf.equal(inps[i],data_utils.PAD_ID)
                         prob = tf.select(pads,tf.ones(batch_size),prob)
-                        # self.test_probs[b_id].append(prob)
+                        prob = tf.cast(prob,tf.float64)
                         self.output_q[b_id] = self.output_q[b_id] * prob
                     
             
@@ -181,7 +183,7 @@ class Seq2SeqModel(object):
 
             for b in xrange(len(buckets)):
                 adjusted_losses         = tf.mul(self.losses[b], self.reward[b])
-                policy_losses           = tf.mul(tf.log(self.output_q[b]), self.reward[b])
+                policy_losses           = tf.mul(tf.log(self.output_q[b]), tf.cast(self.reward[b],tf.float64))
                 gradients               = tf.gradients(adjusted_losses, self.tvars)
                 policy_gradients        = tf.gradients(policy_losses,self.tvars)
                 clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
@@ -240,7 +242,6 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif not forward_only and projection:               #We are not in feed farward but want projection
-            import pdb; pdb.set_trace()
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

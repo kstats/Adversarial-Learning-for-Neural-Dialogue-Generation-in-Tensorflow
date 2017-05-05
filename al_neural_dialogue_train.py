@@ -21,8 +21,8 @@ def gen_pre_train():
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True):
-    sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
-                                                gen_inputs, gen_outputs, mc_search=mc_search)
+    # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
+    #                                             gen_inputs, gen_outputs, mc_search=mc_search)
     #import pdb; pdb.set_trace()
     sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
 
@@ -210,7 +210,7 @@ def gen_pre_train2():
 
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
-    gen_config.batch_size = 1
+    # gen_config.batch_size = 1
     with tf.Session() as sess:
         initializer = tf.random_uniform_initializer(-1 * disc_config.init_scale, 1 * disc_config.init_scale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):

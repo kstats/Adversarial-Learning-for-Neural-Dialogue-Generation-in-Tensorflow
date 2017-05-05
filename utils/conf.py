@@ -34,7 +34,7 @@ class gen_config(object):
     learning_rate               = 0.5
     learning_rate_decay_factor  = 0.99
     max_gradient_norm           = 5.0
-    keep_prob                   = 1.0    
+    keep_prob                   = 0.9    
     batch_size                  = 5
     beam_size                   = 5
 
@@ -50,6 +50,6 @@ class gen_config(object):
     steps_per_checkpoint        = 8000
     steps_per_sample            = 150
     
-    iters                       = 1
+    iters                       = 20
     force_iters                 = 0
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

@@ -157,7 +157,7 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
             eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
             selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         return selected_token_ids
 
     # Which bucket does it belong to?

@@ -250,6 +250,7 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif mode is self.SM_SAMPLE:               #We are not in feed farward but want projection
+            output_feed = []
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         else:

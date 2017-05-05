@@ -20,18 +20,18 @@ class disc_config(object):
     out_dir                     = os.path.abspath(os.path.join(os.path.curdir,"runs"))
 
     checkpoint_num              = 1000 
-    checkpoint_every            = 10    
+    checkpoint_every            = 10
     num_epoch                   = 60
     max_decay_epoch             = 30
 
-    iters                       = 10       
+    iters                       = 1      
    # valid_num                   = 100
 
 class gen_config(object):
     
     num_layers                  = 1
     size                        = 512
-    learning_rate               = 0.0
+    learning_rate               = 0.5
     learning_rate_decay_factor  = 0.99
     max_gradient_norm           = 5.0
     keep_prob                   = 1.0    
@@ -50,6 +50,6 @@ class gen_config(object):
     steps_per_checkpoint        = 8000
     steps_per_sample            = 150
     
-    iters                       = 1
+    iters                       = 10
     force_iters                 = 0
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

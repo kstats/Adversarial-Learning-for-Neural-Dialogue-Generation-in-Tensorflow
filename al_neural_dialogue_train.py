@@ -202,7 +202,7 @@ def gen_pre_train2():
 
             # Do a step of policy gradient on the generator
 
-            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = True, reward = reward[:,1])
+            gen_model.step(sess, encoder, dec_gen, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN, reward = reward[:,1])
 
 # Adversarial Learning for Neural Dialogue Generation
 def al_train():
@@ -275,7 +275,7 @@ def al_train():
                 if len(dec_gen)< gen_config.buckets[bucket_id][1]:
                     dec_gen = dec_gen + [0]*(gen_config.buckets[bucket_id][1] - len(dec_gen))
                 dec_gen = np.reshape(dec_gen, (-1,1))
-                gen_model.step(sess, encoder, dec_gen, weights, bucket_id, forward_only = False,  projection = True, reward = reward[:,1])
+                gen_model.step(sess, encoder, dec_gen, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN, reward = reward[:,1])
 
 
             '''dec_gen = []
@@ -289,7 +289,7 @@ def al_train():
 
             for i in range(gen_config.force_iters):
                 print("===========================Force Generator %d.%d=============================" % (gstep,i))            
-                _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, forward_only = False, projection = False)
+                _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, mode=gen_model.SM_TRAIN)
             
             # print("loss: ", loss)
             # perplexity.append(loss)

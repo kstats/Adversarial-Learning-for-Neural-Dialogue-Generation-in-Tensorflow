@@ -196,9 +196,13 @@ class Seq2SeqModel(object):
             all_variables = [k for k in tf.global_variables() if k.name.startswith(self.scope_name)]
             self.saver = tf.train.Saver(all_variables)
 
+    SM_TRAIN = 0
+    SM_POLICY_TRAIN = 1
+    SM_EVAL = 2
+    SM_SAMPLE = 3
  
     def step(self, session, encoder_inputs, decoder_inputs, target_weights,
-           bucket_id, forward_only = True, projection = True, reward = None):
+           bucket_id, mode = SM_EVAL, reward = None):
         
         # Check if the sizes match.
         encoder_size, decoder_size = self.buckets[bucket_id]
@@ -213,8 +217,8 @@ class Seq2SeqModel(object):
                            " %d != %d." % (len(target_weights), decoder_size))
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
-        input_feed = {self.forward_only.name : forward_only,
-                      self.do_projection.name: projection,
+        input_feed = {self.forward_only.name : mode is SM_EVAL,
+                      self.do_projection.name: mode is not SM_TRAIN,
                       self.tf_bucket_id: bucket_id}
         
         for l in xrange(len(self.buckets)):
@@ -231,30 +235,35 @@ class Seq2SeqModel(object):
 
         #import pdb; pdb.set_trace()
         # Output feed: depends on whether we do a backward step or not.
-        if not forward_only and not projection:            # normal training
+        if mode is SM_TRAIN:            # normal training
             output_feed = [self.updates[bucket_id],           # Update Op that does SGD.
                            self.gradient_norms[bucket_id],    # Gradient norm.
                            self.losses[bucket_id]]            # Loss for this batch.
 
-        elif forward_only and projection:                   # testing or reinforcement learning
+        elif mode is SM_EVAL:                   # testing or reinforcement learning
             output_feed = [self.encoder_state[bucket_id], 
                            self.losses[bucket_id]]          # Loss for this batch.
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
-        elif not forward_only and projection:               #We are not in feed farward but want projection
+        elif mode is SM_POLICY_TRAIN:               #We are not in feed farward but want projection
             output_feed = [self.policy_updates[bucket_id]]
+            for l in xrange(decoder_size):                  # Output logits.
+                output_feed.append(self.outputs[bucket_id][l])
+        elif mode is SM_SAMPLE:               #We are not in feed farward but want projection
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         else:
             raise ValueError("forward_only and no projection is illegal")
             
         outputs = session.run(output_feed, input_feed)
-        if not forward_only and not projection:
-            return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
-        elif not forward_only and projection:
-            return outputs[1:]
-        else:
-            return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
+        if mode is SM_TRAIN:
+          return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
+        elif mode is SM_POLICY_TRAIN:
+          return outputs[1:]
+        elif mode is SM_SAMPLE:
+          return outputs
+        elif mode is SM_EVAL:
+          return outputs[0], outputs[1], outputs[2:]  # encoder_state, loss, outputs.
 
 
     def get_batch(self, train_data, bucket_id, type=0):

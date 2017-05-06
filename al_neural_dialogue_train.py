@@ -290,6 +290,7 @@ def al_train():
                     decoder_inputs.append(dec_gen)
                 import pdb; pdb.set_trace()
                 decoder_inputs = np.transpose(np.asarray(decoder_inputs))
+                decoder_inputs = np.squeeze(decoder_inputs)
                 gen_model.step(sess, encoder, decoder_inputs, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN,
                                reward=reward[:, 1])
 

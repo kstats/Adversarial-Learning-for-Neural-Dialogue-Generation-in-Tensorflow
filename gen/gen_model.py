@@ -120,6 +120,7 @@ class Seq2SeqModel(object):
                     softmax_loss_function = softmax_loss_function)
             
            
+            self.pre_projection = self.outputs
             self.output_q = []
             # self.test_inps = []
             self.test_probs = []
@@ -127,8 +128,12 @@ class Seq2SeqModel(object):
             #If we use output projection, we need to project outputs for decoding.
             if self.output_projection is not None:
                 for b_id in xrange(len(self.buckets)):
+                    # projected_output = []
+                    # for o in self.outputs[b_id]:
+                    #   projected_output.append([tf.matmul(output, self.output_projection[0]) + self.output_projection[1] for output in o])
                     self.outputs[b_id] = [tf.cond(self.do_projection, 
                                             lambda : tf.matmul(output, self.output_projection[0]) + self.output_projection[1],
+                                            # lambda : projected_output,
                                             lambda : output) 
                                         for output in self.outputs[b_id] ]
 
@@ -178,7 +183,7 @@ class Seq2SeqModel(object):
             self.policy_gradient_norms = []
             self.updates        = []
             self.policy_updates = []            
-            self.reward         = [tf.placeholder(tf.float32, name="reward_%i" % i) for i in range(len(buckets))]
+            self.reward         = [tf.placeholder(tf.float32, shape=[None], name="reward_%i" % i) for i in range(len(buckets))]
             opt                 = tf.train.GradientDescentOptimizer(self.learning_rate)
 
             for b in xrange(len(buckets)):
@@ -220,9 +225,9 @@ class Seq2SeqModel(object):
         input_feed = {self.forward_only.name : mode is self.SM_EVAL,
                       self.do_projection.name: mode is not self.SM_TRAIN,
                       self.tf_bucket_id: bucket_id}
-        
+ 
         for l in xrange(len(self.buckets)):
-            input_feed[self.reward[l].name] = reward if reward else 1
+            input_feed[self.reward[l].name] = reward if reward is not None else [1]*self.batch_size
 
         for l in xrange(encoder_size):
             input_feed[self.encoder_inputs[l].name] = encoder_inputs[l]
@@ -233,12 +238,15 @@ class Seq2SeqModel(object):
         # Since our targets are decoder inputs shifted by one, we need one more.
         input_feed[self.decoder_inputs[decoder_size].name] = np.zeros([self.batch_size], dtype=np.int32)
 
-        #import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()    # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
+    #                                             gen_inputs, gen_outputs, mc_search=mc_search)
+
         # Output feed: depends on whether we do a backward step or not.
         if mode is self.SM_TRAIN:            # normal training
             output_feed = [self.updates[bucket_id],           # Update Op that does SGD.
                            self.gradient_norms[bucket_id],    # Gradient norm.
                            self.losses[bucket_id]]            # Loss for this batch.
+            import pdb; pdb.set_trace()
 
         elif mode is self.SM_EVAL:                   # testing or reinforcement learning
             output_feed = [self.encoder_state[bucket_id], 
@@ -246,10 +254,12 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif mode is self.SM_POLICY_TRAIN:               #We are not in feed farward but want projection
+            import pdb; pdb.set_trace()
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif mode is self.SM_SAMPLE:               #We are not in feed farward but want projection
+            # import pdb; pdb.set_trace()
             output_feed = []
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

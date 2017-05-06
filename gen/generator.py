@@ -273,7 +273,7 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
             all_prob_t = [0] * len(all_prob_ts)
             all_prob = all_prob_ts
 
-
+            # import pdb; pdb.set_trace()
             # suppress copy-cat (respond the same as input)
             # if dptr < len(encoder_inputs):
             #     all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01

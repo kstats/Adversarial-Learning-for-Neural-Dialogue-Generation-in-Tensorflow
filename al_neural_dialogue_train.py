@@ -280,11 +280,17 @@ def al_train():
                 rewards.append(reward)
                 pickle.dump(rewards, open("rewards.p", "wb"))
                 # 4.Update G on (X, ^Y ) using reward r
-                dec_gen = responses[0][:gen_config.buckets[bucket_id][1]]
-                if len(dec_gen) < gen_config.buckets[bucket_id][1]:
-                    dec_gen = dec_gen + [0] * (gen_config.buckets[bucket_id][1] - len(dec_gen))
-                dec_gen = np.reshape(dec_gen, (-1, 1))
-                gen_model.step(sess, encoder, dec_gen, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN,
+                import pdb; pdb.set_trace()
+                decoder_inputs = []
+                for res in responses:
+                    dec_gen = res[:gen_config.buckets[bucket_id][1]]
+                    if len(dec_gen) < gen_config.buckets[bucket_id][1]:
+                        dec_gen = dec_gen + [0] * (gen_config.buckets[bucket_id][1] - len(dec_gen))
+                    dec_gen = np.reshape(dec_gen, (-1, 1))
+                    decoder_inputs.append(dec_gen)
+                import pdb; pdb.set_trace()
+                decoder_inputs = np.transpose(np.asarray(decoder_inputs))
+                gen_model.step(sess, encoder, decoder_inputs, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN,
                                reward=reward[:, 1])
 
             '''dec_gen = []

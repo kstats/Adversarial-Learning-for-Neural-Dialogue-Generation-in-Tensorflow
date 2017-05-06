@@ -272,6 +272,7 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
             #     all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
 
             # all_prob = softmax(all_prob)
+            all_prob = all_prob / np.sum(all_prob)
             ca = np.where(np.random.multinomial(1, all_prob))[0][0]
             #TODO Change this to sample
 

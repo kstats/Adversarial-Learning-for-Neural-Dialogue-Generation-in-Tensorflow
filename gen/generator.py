@@ -272,6 +272,9 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
             #     all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
 
             # all_prob = softmax(all_prob)
+            #all_prob = all_prob.view('float64')
+            #import pdb; pdb.set_trace()
+            all_prob = all_prob.astype('float64')
             all_prob = all_prob / np.sum(all_prob)
             try:
               ca = np.where(np.random.multinomial(1, all_prob))[0][0]

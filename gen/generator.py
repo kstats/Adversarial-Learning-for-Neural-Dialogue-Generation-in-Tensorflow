@@ -216,9 +216,33 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
       res_cands.append(cand)
     return res_cands
 
+def sample_from(sess, context, bucket_id, gen_config, model, vocab):
+    # context is already in the format received from get_batch, it is the encoder_inputs. We now create the starting point for decoder inputs:
+
+    def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
+        logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
+        #TODO fix this to not just take the first item in the batch...
+        prob = softmax(logits[dptr][0])
+        return prob
+
+    decoder_size = model.buckets[bucket_id][1]
+    decoder_inputs = np.zeros([decoder_size,gen_config.batch_size])
+    target_weights = np.zeros([decoder_size,gen_config.batch_size])
+    decoder_inputs[0,:] = data_util.GO_ID
+    deocder_status = np.zeros(gen_config.batch_size)            # keep track on whether we've seen EOS
+
+    for dptr in range(decoder_size):
+      prob = model_step(context,decoder_inputs,target_weights,bucket_id)
+
+
+
+    
+
+
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
+        import pdb; pdb.set_trace()
         logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         #TODO fix this to not just take the first item in the batch...
         prob = softmax(logits[dptr][0])
@@ -231,6 +255,7 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
 
     feed_data = {bucket_id: [(input_token_ids, outputs)]}
     #decoder inputs are just "go"
+    import pdb; pdb.set_trace()
     encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
     #Hacky way to get around both batching and sampling
     #Rencoder_inputs = np.array(encoder_inputs)[:,0]
@@ -347,7 +372,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     return sample_context, sample_response, sample_labels, rep
     pass
 
-def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, num_samples=1):
+def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab):
     sample_context = []
     sample_response = []
     sample_labels = []
@@ -356,14 +381,14 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, nu
         sample_response.append(gold)
         sample_context.append(con)
         sample_labels.append(1)
-        for i in range(num_samples):
-            ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
-            sample_response.append([ret])
-            sample_context.append(con)
-            sample_labels.append(0)
-            print ("Sampled response (of length %d): " % len(ret))
+        
+        ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
+        sample_response.append([ret])
+        sample_context.append(con)
+        sample_labels.append(0)
+        print ("Sampled response (of length %d): " % len(ret))
 
-            print (ret)
-            rep.append(ret)
+        print (ret)
+        rep.append(ret)
 
     return sample_context, sample_response, sample_labels, rep

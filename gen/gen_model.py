@@ -238,8 +238,6 @@ class Seq2SeqModel(object):
         # Since our targets are decoder inputs shifted by one, we need one more.
         input_feed[self.decoder_inputs[decoder_size].name] = np.zeros([self.batch_size], dtype=np.int32)
 
-        #import pdb; pdb.set_trace()    # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
-    #                                             gen_inputs, gen_outputs, mc_search=mc_search)
 
         # Output feed: depends on whether we do a backward step or not.
         if mode is self.SM_TRAIN:            # normal training
@@ -259,7 +257,6 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif mode is self.SM_SAMPLE:               #We are not in feed farward but want projection
-            # import pdb; pdb.set_trace()
             output_feed = []
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

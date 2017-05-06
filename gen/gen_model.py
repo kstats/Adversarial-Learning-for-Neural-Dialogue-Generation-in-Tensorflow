@@ -165,7 +165,7 @@ class Seq2SeqModel(object):
                     self.test_probs.append([])
                     for i in xrange(blen-1):
                         ind = inps[i,:]                           
-                        ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))                 
+                        ind = tf.transpose(tf.stack([np.arange(batch_size),ind]))
                         prob = tf.gather_nd(tf.nn.softmax(self.outputs[b_id][i]),ind)
                         self.test_probs[b_id].append(prob)
                         pads = tf.equal(inps[i],data_utils.PAD_ID)
@@ -246,7 +246,7 @@ class Seq2SeqModel(object):
             output_feed = [self.updates[bucket_id],           # Update Op that does SGD.
                            self.gradient_norms[bucket_id],    # Gradient norm.
                            self.losses[bucket_id]]            # Loss for this batch.
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
 
         elif mode is self.SM_EVAL:                   # testing or reinforcement learning
             output_feed = [self.encoder_state[bucket_id], 
@@ -254,7 +254,7 @@ class Seq2SeqModel(object):
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])
         elif mode is self.SM_POLICY_TRAIN:               #We are not in feed farward but want projection
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             output_feed = [self.policy_updates[bucket_id]]
             for l in xrange(decoder_size):                  # Output logits.
                 output_feed.append(self.outputs[bucket_id][l])

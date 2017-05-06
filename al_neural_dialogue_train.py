@@ -1,5 +1,4 @@
 import os
-import pdb
 import tensorflow as tf
 import numpy as np
 import time
@@ -23,16 +22,13 @@ def gen_pre_train():
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True):
     # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
     #                                             gen_inputs, gen_outputs, mc_search=mc_search)
-    #import pdb; pdb.set_trace()
     sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
 
     #for n in range(len(sample_response)):
      #   if n % 2 == 1:
       #      sample_response[n] = [sample_response[n]]
-    #import pdb; pdb.set_trace()
     #responses = [responses]
     print("disc_train_data, mc_search: ", mc_search)
-    # import pdb; pdb.set_trace()
     rem_set = []
     for i in range(len(sample_labels)):
         if sample_labels[i] == 1:
@@ -122,7 +118,6 @@ def disc_pre_train():
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
-        #import pdb; pdb.set_trace()
         vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
@@ -138,12 +133,9 @@ def disc_pre_train():
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                              if train_buckets_scale[i] > random_number_01])
-            #import pdb;
-            #pdb.set_trace()
             print("========lr=%f==============Update Discriminator step %d=======================" % (disc_model.lr.eval(),gstep))
             # 1.Sample (X,Y) from real data
 
-            # import pdb; pdb.set_trace()
 
             _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
             #1.5 get sample from data to generate from
@@ -234,7 +226,6 @@ def al_train():
                              if train_buckets_scale[i] > random_number_01])
 
             for i in range(disc_config.iters):
-                # import pdb; pdb.set_trace()
                 print("===========================Update Discriminator %d.%d=============================" % (gstep, i))
                 # 1.Sample (X,Y) from real data
                 _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)

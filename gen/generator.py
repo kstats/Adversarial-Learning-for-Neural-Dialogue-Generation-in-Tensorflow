@@ -7,7 +7,6 @@ import os
 import random
 import sys
 import time
-import pickle
 import heapq
 import tensorflow.python.platform
 
@@ -16,7 +15,6 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 import utils.data_utils as data_utils
-import utils.conf as conf
 import gen.gen_model as seq2seq_model
 from tensorflow.python.platform import gfile
 
@@ -24,14 +22,13 @@ sys.path.append('../utils')
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
-_buckets = conf.gen_config.buckets
 
 
 def create_model(session, gen_config):
     start_time  = time.time()        
     """Create generation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
-                gen_config.vocab_size, gen_config.vocab_size, _buckets,
+                gen_config.vocab_size, gen_config.vocab_size, gen_config.buckets,
                 gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
                 gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob)
 
@@ -61,7 +58,7 @@ def train(gen_config):
 
     with tf.Session() as sess:
         # Create model.
-        train_bucket_sizes  = [len(train_set[b]) for b in xrange(len(_buckets))]
+        train_bucket_sizes  = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size    = float(sum(train_bucket_sizes))
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
@@ -157,7 +154,6 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
             eos_id = np.where(np.asarray(s_t_id) == data_utils.EOS_ID)      
             selected_token_ids[b_id] = s_t_id if len(eos_id[0])== 0 else s_t_id[:np.min(eos_id[0])+1] 
 
-        # import pdb; pdb.set_trace()
         return selected_token_ids
 
     # Which bucket does it belong to?
@@ -172,7 +168,6 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
     ### Original greedy decoding
     if beam_size == 1 or (not mc_search): 
         _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, mode=model.SM_EVAL)
-        # import pdb; pdb.set_trace()
         return [{"dec_inp": greedy_dec(output_logits), 'prob': 1}]
 
     # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)
@@ -256,7 +251,6 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     #TODO fix this to work with buckets
     # for dptr in range(decoder_len - 1):
     for dptr in range(decoder_len):
-        # import pdb; pdb.set_trace()
         if dptr > 0:
             if not new_beams:
               break
@@ -273,7 +267,6 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
             all_prob_t = [0] * len(all_prob_ts)
             all_prob = all_prob_ts
 
-            # import pdb; pdb.set_trace()
             # suppress copy-cat (respond the same as input)
             # if dptr < len(encoder_inputs):
             #     all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
@@ -312,7 +305,6 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     # post-process results
     res_cands = []
     #for prob, cand in sorted(results, reverse=True):
-    # import pdb; pdb.set_trace()
     temp = beams[0][1]['dec_inp']
     temp2 = [te[0] for te in temp]
     temp2.pop(0)
@@ -331,7 +323,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
         sample_context.append(source_query)
         sample_response.append(source_answer)
         sample_labels.append(1)
-        responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, _buckets, mc_search)
+        responses = get_predicted_sentence(sess, source_query, vocab, model, gen_config.beam_size, gen_config.buckets, mc_search)
 
         for resp in responses:
             if gen_config.beam_size == 1 or (not mc_search):
@@ -351,7 +343,6 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     pass
 
 def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, num_samples=1):
-    #import pdb; pdb.set_trace()
     sample_context = []
     sample_response = []
     sample_labels = []

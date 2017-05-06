@@ -44,6 +44,7 @@ PAD_ID  = 0
 UNK_ID  = 1
 GO_ID   = 25001
 EOS_ID  = 25002
+EOC_ID  = 25003
 
 
 # Regular expressions used to tokenize.
@@ -378,15 +379,22 @@ def create_dataset(fname, is_disc=True):
         n_sent, n_context = np.shape(dialogs)
     
     dataset = {}
-    dataset['context']      = np.array([map(int,x[0].split(" ")) for x in dialogs])
-    dataset['response']     = np.array([map(int,x[1].split(" ")) for x in dialogs])
+    if n_context > 2:
+        dataset['context']  = [[map(int,x[c].split(" ")) for c in range(n_context-1)] for x in dialogs]
+        for x in dataset['context']: x = [ l.extend([EOC_ID]) for l in x[:-1] ]
+        dataset['context']  = np.array([list(np.concatenate(x)) for x in dataset['context']])
+        dataset['response'] = np.array([map(int,x[n_context-1].split(" ")) for x in dialogs])
+    else:
+        dataset['context']  = np.array([map(int,x[0].split(" ")) for x in dialogs])
+        dataset['response'] = np.array([map(int,x[1].split(" ")) for x in dialogs])
+    
     if is_disc:
         dataset['label']    = np.array([1] * n_sent)
+    
     dataset['len']          = n_sent
     dataset['is_disc']      = is_disc
 
     return dataset
-
 
 def shuffle_dataset(dataset):
 
@@ -500,7 +508,7 @@ def convert_to_format(dataset):
 
 
 
-def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1):
+def disc_load_data(max_len, fname, valid_portion=0.1):
  
     dataset                     = create_dataset(fname)
     mixed_dataset               = gen_dataset_w_false_ex(dataset)

@@ -12,7 +12,7 @@ class disc_config(object):
     class_num                   = 2
     init_scale                  = 0.1    
     
-    vocabulary_size             = 25003    
+    vocabulary_size             = 25004    
 
     train_dir                   = 'data/'
     train_data_file             = "training500k.txt"
@@ -39,7 +39,7 @@ class gen_config(object):
     beam_size                   = 5
 
     vocab_path                  = './data/movie_25000'
-    vocab_size                  = 25003
+    vocab_size                  = 25004
     
     data_dir                    = "data/"
     train_data_file             = "training200k.txt"

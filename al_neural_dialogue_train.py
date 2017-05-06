@@ -283,7 +283,7 @@ def al_train():
                 import pdb; pdb.set_trace()
                 decoder_inputs = []
                 for res in responses:
-                    dec_gen = res[:gen_config.buckets[bucket_id][1]]
+                    dec_gen = [data_utils.GO_ID] + res[:gen_config.buckets[bucket_id][1]]
                     if len(dec_gen) < gen_config.buckets[bucket_id][1]:
                         dec_gen = dec_gen + [0] * (gen_config.buckets[bucket_id][1] - len(dec_gen))
                     dec_gen = np.reshape(dec_gen, (-1, 1))

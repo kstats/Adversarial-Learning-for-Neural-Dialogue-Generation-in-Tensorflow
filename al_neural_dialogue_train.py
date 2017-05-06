@@ -219,13 +219,11 @@ def al_train():
         perplexity = []
         disc_loss = []
         gstep = 0
-        while True:
-            random_number_01 = np.random.random_sample()
+        while True:            
             gstep += 1
-            bucket_id = min([i for i in xrange(len(train_buckets_scale))
-                             if train_buckets_scale[i] > random_number_01])
-
             for i in range(disc_config.iters):
+                bucket_id = min([j for j in xrange(len(train_buckets_scale))
+                                 if train_buckets_scale[j] > np.random.random_sample()])
                 print("===========================Update Discriminator %d.%d=============================" % (gstep, i))
                 # 1.Sample (X,Y) from real data
                 _, _, _, source_inputs, source_outputs = gen_model.get_batch(train_set, bucket_id, 0)
@@ -245,11 +243,14 @@ def al_train():
                 pickle.dump(disc_loss, open("disc_loss.p", "wb"))
 
             for i in range(gen_config.iters):
+                bucket_id = min([j for j in xrange(len(train_buckets_scale))
+                                    if train_buckets_scale[j] > np.random.random_sample()])
+
                 print("===============================Update Generator %d.%d=============================" % (gstep, i))
                 # 1.Sample (X,Y) from real data
                 update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)
                 encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
-
+                import pdb; pdb.set_trace()
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
                 # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
                 #                                             source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)

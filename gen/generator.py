@@ -273,7 +273,11 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
 
             # all_prob = softmax(all_prob)
             all_prob = all_prob / np.sum(all_prob)
-            ca = np.where(np.random.multinomial(1, all_prob))[0][0]
+            try:
+              ca = np.where(np.random.multinomial(1, all_prob))[0][0]
+            except ValueError as e:
+              print(e)
+              import pdb; pdb.set_trace()
             #TODO Change this to sample
 
             new_cand = {

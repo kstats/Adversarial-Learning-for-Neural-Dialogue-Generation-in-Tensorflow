@@ -230,7 +230,6 @@ def sample_from(sess, context, bucket_id, gen_config, model, vocab):
     target_weights = np.zeros([decoder_size,gen_config.batch_size])
     decoder_inputs[0,:] = data_utils.GO_ID
     decoder_status = np.zeros(gen_config.batch_size)            # keep track on whether we've seen EOS
-    import pdb; pdb.set_trace()
 
     for dptr in range(0,decoder_size-1):
       prob = model_step(context,decoder_inputs,dptr,target_weights,bucket_id)   # prob is batch x distribution
@@ -241,9 +240,9 @@ def sample_from(sess, context, bucket_id, gen_config, model, vocab):
       target_weights[dptr,:] = np.logical_not(decoder_status).astype('float32')
       if np.all(decoder_status):
         break
-      import pdb; pdb.set_trace()
 
-    return decoder_inputs
+    decoder_inputs=np.concatenate([decoder_inputs[1:,:],[np.zeros(gen_config.batch_size)]])
+    return np.transpose(decoder_inputs)
 
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):

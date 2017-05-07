@@ -216,6 +216,35 @@ def get_predicted_sentence(sess, input_token_ids, vocab, model,
       res_cands.append(cand)
     return res_cands
 
+def sample_from(sess, context, bucket_id, gen_config, model, vocab):
+    # context is already in the format received from get_batch, it is the encoder_inputs. We now create the starting point for decoder inputs:
+
+    def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
+        logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)        
+        prob = [softmax(x.astype('float64')) for x in logits[dptr]]
+        prob = [x/x.sum() for x in prob]  # renormalize
+        return prob
+
+    decoder_size = model.buckets[bucket_id][1]
+    decoder_inputs = np.zeros([decoder_size,gen_config.batch_size])
+    target_weights = np.zeros([decoder_size,gen_config.batch_size])
+    decoder_inputs[0,:] = data_utils.GO_ID
+    decoder_status = np.zeros(gen_config.batch_size)            # keep track on whether we've seen EOS
+    import pdb; pdb.set_trace()
+
+    for dptr in range(0,decoder_size-1):
+      prob = model_step(context,decoder_inputs,dptr,target_weights,bucket_id)   # prob is batch x distribution
+      cands = [np.random.multinomial(1,p).argmax() for p in prob]
+      cands *= np.logical_not(decoder_status)                              # if we've already seen EOS, zero the respective candidate
+      decoder_status = np.logical_or(decoder_status,cands==data_utils.EOS_ID)
+      decoder_inputs[dptr+1] = cands
+      target_weights[dptr,:] = np.logical_not(decoder_status).astype('float32')
+      if np.all(decoder_status):
+        break
+      import pdb; pdb.set_trace()
+
+    return decoder_inputs
+
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
@@ -272,6 +301,9 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
             #     all_prob[encoder_inputs[dptr]] = all_prob[encoder_inputs[dptr]] * 0.01
 
             # all_prob = softmax(all_prob)
+            #all_prob = all_prob.view('float64')
+            #import pdb; pdb.set_trace()
+            all_prob = all_prob.astype('float64')
             all_prob = all_prob / np.sum(all_prob)
             try:
               ca = np.where(np.random.multinomial(1, all_prob))[0][0]
@@ -313,6 +345,8 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     temp = beams[0][1]['dec_inp']
     temp2 = [te[0] for te in temp]
     temp2.pop(0)
+    print("Target weights for the sample I'm returning:")
+    print(target_weights)
     return temp2
 
 
@@ -347,7 +381,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     return sample_context, sample_response, sample_labels, rep
     pass
 
-def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, num_samples=1):
+def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab):
     sample_context = []
     sample_response = []
     sample_labels = []
@@ -356,14 +390,14 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, nu
         sample_response.append(gold)
         sample_context.append(con)
         sample_labels.append(1)
-        for i in range(num_samples):
-            ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
-            sample_response.append([ret])
-            sample_context.append(con)
-            sample_labels.append(0)
-            print ("Sampled response (of length %d): " % len(ret))
+        
+        ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
+        sample_response.append([ret])
+        sample_context.append(con)
+        sample_labels.append(0)
+        print ("Sampled response (of length %d): " % len(ret))
 
-            print (ret)
-            rep.append(ret)
+        print (ret)
+        rep.append(ret)
 
     return sample_context, sample_response, sample_labels, rep

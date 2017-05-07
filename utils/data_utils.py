@@ -647,3 +647,17 @@ def transform_responses(responses):
     decoder_inputs = np.squeeze(decoder_inputs)
 
     return decoder_inputs
+
+def prepare_data(gen_config):
+    
+    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
+    vocab, rev_vocab            = initialize_vocabulary(gen_config.vocab_path)
+    dataset                     = create_dataset(train_path, is_disc = False)
+    train_dataset, dev_dataset  = split_dataset(dataset, ratio = gen_config.train_ratio )
+
+    # Read data into buckets and compute their sizes.
+    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
+    train_set, dev_set = read_data(train_dataset, gen_config.buckets, gen_config.max_train_data_size), read_data(dev_dataset, gen_config.buckets)
+
+    return vocab, rev_vocab, dev_set, train_set
+

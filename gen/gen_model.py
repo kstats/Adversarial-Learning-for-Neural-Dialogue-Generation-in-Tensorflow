@@ -208,7 +208,7 @@ class Seq2SeqModel(object):
  
     def step(self, session, encoder_inputs, decoder_inputs, target_weights,
            bucket_id, mode = SM_EVAL, reward = None):
-        
+        #import pdb; pdb.set_trace()
         # Check if the sizes match.
         encoder_size, decoder_size = self.buckets[bucket_id]
         if len(encoder_inputs) != encoder_size:

@@ -259,7 +259,7 @@ def al_train():
                 # 1.Sample (X,Y) from real data
                 update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)
                 encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
-                import pdb; pdb.set_trace()
+                #import pdb; pdb.set_trace()
                 test = gens.sample_from(sess,np.asarray(encoder),bucket_id,gen_config,gen_model,vocab)
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
                 # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
@@ -322,6 +322,13 @@ def al_train():
                 pickle.dump(rewards, open("rewards.p", "wb"))
                 pickle.dump(perplexity, open("perplexity.p", "wb"))
                 pickle.dump(gen_steps, open("gen_steps.p", "wb"))
+
+            if gstep % gen_config.adv_checkpoints:
+                checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")
+                gen_model.saver.save(sess, checkpoint_path, global_step=gen_model.global_step)
+                checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))
+                checkpoint_prefix = os.path.join(checkpoint_dir, "disc.model")
+                disc_model.saver.save(sess, checkpoint_prefix, global_step=disc_model.global_step)
 
         # add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

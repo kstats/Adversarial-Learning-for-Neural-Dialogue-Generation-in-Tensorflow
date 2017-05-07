@@ -220,29 +220,34 @@ def sample_from(sess, context, bucket_id, gen_config, model, vocab):
     # context is already in the format received from get_batch, it is the encoder_inputs. We now create the starting point for decoder inputs:
 
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
-        #TODO fix this to not just take the first item in the batch...
-        prob = softmax(logits[dptr][0])
+        logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)        
+        prob = [softmax(x.astype('float64')) for x in logits[dptr]]
+        prob = [x/x.sum() for x in prob]  # renormalize
         return prob
 
     decoder_size = model.buckets[bucket_id][1]
     decoder_inputs = np.zeros([decoder_size,gen_config.batch_size])
     target_weights = np.zeros([decoder_size,gen_config.batch_size])
-    decoder_inputs[0,:] = data_util.GO_ID
-    deocder_status = np.zeros(gen_config.batch_size)            # keep track on whether we've seen EOS
+    decoder_inputs[0,:] = data_utils.GO_ID
+    decoder_status = np.zeros(gen_config.batch_size)            # keep track on whether we've seen EOS
+    import pdb; pdb.set_trace()
 
-    for dptr in range(decoder_size):
-      prob = model_step(context,decoder_inputs,target_weights,bucket_id)
+    for dptr in range(0,decoder_size-1):
+      prob = model_step(context,decoder_inputs,dptr,target_weights,bucket_id)   # prob is batch x distribution
+      cands = [np.random.multinomial(1,p).argmax() for p in prob]
+      cands *= np.logical_not(decoder_status)                              # if we've already seen EOS, zero the respective candidate
+      decoder_status = np.logical_or(decoder_status,cands==data_utils.EOS_ID)
+      decoder_inputs[dptr+1] = cands
+      target_weights[dptr,:] = np.logical_not(decoder_status).astype('float32')
+      if np.all(decoder_status):
+        break
+      import pdb; pdb.set_trace()
 
-
-
-    
-
+    return decoder_inputs
 
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-        import pdb; pdb.set_trace()
         logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         #TODO fix this to not just take the first item in the batch...
         prob = softmax(logits[dptr][0])
@@ -255,7 +260,6 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
 
     feed_data = {bucket_id: [(input_token_ids, outputs)]}
     #decoder inputs are just "go"
-    import pdb; pdb.set_trace()
     encoder_inputs, decoder_inputs, target_weights, _, _ = model.get_batch(feed_data, bucket_id, 0)
     #Hacky way to get around both batching and sampling
     #Rencoder_inputs = np.array(encoder_inputs)[:,0]
@@ -341,6 +345,8 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     temp = beams[0][1]['dec_inp']
     temp2 = [te[0] for te in temp]
     temp2.pop(0)
+    print("Target weights for the sample I'm returning:")
+    print(target_weights)
     return temp2
 
 

@@ -35,7 +35,7 @@ class gen_config(object):
     learning_rate_decay_factor  = 0.99
     max_gradient_norm           = 5.0
     keep_prob                   = 1.
-    batch_size                  = 128
+    batch_size                  = 16
     beam_size                   = 5
 
     vocab_path                  = './data/movie_25000'

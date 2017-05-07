@@ -331,6 +331,7 @@ def _al_train():
         #Get training and development dataset from file
         train_path        = os.path.join(gen_config.data_dir, gen_config.train_data_file)
         dataset           = data_utils.create_dataset(train_path, is_disc = False)
+        
         train_dataset, _  = data_utils.split_dataset(dataset, ratio = gen_config.train_ratio)
 
         #Split dataset into buckets

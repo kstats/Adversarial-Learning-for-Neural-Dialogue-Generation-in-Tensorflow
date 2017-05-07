@@ -581,6 +581,7 @@ def split_into_buckets(dataset, _buckets, max_size=None):
         source_ids = dataset['context'][i]
         target_ids = dataset['response'][i]
 
+        target_ids.append(EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets): 
             if len(source_ids) < source_size and len(target_ids) < target_size:
                 data_set[bucket_id].append([source_ids, target_ids])
@@ -600,8 +601,8 @@ def src_to_gen(source_encoder, source_decoder, _buckets, bucket_id, batch_size):
 
     for decoder_input in source_decoder:
         # Decoder inputs get an extra "GO" symbol, and are padded then.
-        decoder_pad_size = decoder_size - len(decoder_input) - 2
-        decoder_inputs.append([GO_ID] + decoder_input + [EOS_ID] + [PAD_ID] * decoder_pad_size)
+        decoder_pad_size = decoder_size - len(decoder_input) - 1 
+        decoder_inputs.append([GO_ID] + decoder_input +  [PAD_ID] * decoder_pad_size)
 
     # Now we create batch-major vectors from the data selected above.
     batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
@@ -660,4 +661,20 @@ def prepare_data(gen_config):
     train_set, dev_set = read_data(train_dataset, gen_config.buckets, gen_config.max_train_data_size), read_data(dev_dataset, gen_config.buckets)
 
     return vocab, rev_vocab, dev_set, train_set
+
+def read_data(dataset, _buckets, max_size=None):
+    
+    data_set = [[] for _ in _buckets]
+    for i in range(dataset['len']):
+        if (max_size and i > max_size):
+            break
+        source_ids = dataset['context'][i]
+        target_ids = dataset['response'][i]
+
+        target_ids.append(EOS_ID)
+        for bucket_id, (source_size, target_size) in enumerate(_buckets): 
+            if len(source_ids) < source_size and len(target_ids) < target_size:
+                data_set[bucket_id].append([source_ids, target_ids])
+                break
+    return data_set
 

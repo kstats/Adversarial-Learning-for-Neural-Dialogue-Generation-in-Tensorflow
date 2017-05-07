@@ -234,7 +234,7 @@ def al_train():
                 # 1.Sample (X,Y) from real data
                 update_gen_data = gen_model.get_batch(train_set, bucket_id, 0)
                 encoder, decoder, weights, source_inputs, source_outputs = update_gen_data
-                import pdb; pdb.set_trace()
+        #        import pdb; pdb.set_trace()
                 test = gens.sample_from(sess,np.asarray(encoder),bucket_id,gen_config,gen_model,vocab)
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
                 # train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
@@ -328,10 +328,11 @@ def _al_train():
         #Get Vocabulary  
         vocab, _        = data_utils.initialize_vocabulary(gen_config.vocab_path)
         
-        #Get training and development dataset from file
+        #Get dataset from file
         train_path        = os.path.join(gen_config.data_dir, gen_config.train_data_file)
         dataset           = data_utils.create_dataset(train_path, is_disc = False)
         
+        #Split dataset into training and development 
         train_dataset, _  = data_utils.split_dataset(dataset, ratio = gen_config.train_ratio)
 
         #Split dataset into buckets
@@ -344,11 +345,13 @@ def _al_train():
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size 
                                                 for i in xrange(len(train_bucket_sizes))]
 
-        rewards             = []
-        steps               = []
-        perplexity          = []
-        disc_loss           = []
-        gstep               = 0
+        rewards    = []
+        steps      = []
+        perplexity = []
+        disc_loss  = []
+        disc_steps = []
+        gen_steps  = []
+        gstep      = 0
 
         while True:   
 
@@ -360,33 +363,34 @@ def _al_train():
                 bucket_id = sample_bucket_id(train_buckets_scale)
                 
                 print("===========================Update Discriminator %d.%d=============================" % (gstep, i))
-                # 1.Sample (X,Y) from real data
-                source_inputs, source_outputs           = gen_model._get_batch(train_set, bucket_id)
+                # 1. Sample (X,Y) from real data
+                source_inputs, source_outputs     = gen_model._get_batch(train_set, bucket_id)
 
-                # 1.5 sample x,y from data to generate samples from
-                gen_inputs, gen_outputs                 = gen_model._get_batch(train_set, bucket_id)
+                # 1.5 Sample x,y from data to generate samples from
+                gen_inputs, gen_outputs           = gen_model._get_batch(train_set, bucket_id)
                 
-                encoder_inputs, decoder_inputs, _       = data_utils.src_to_gen(gen_inputs, gen_outputs, gen_config.buckets, bucket_id, gen_model.batch_size)
+                encoder_inputs, decoder_inputs, _ = data_utils.src_to_gen(gen_inputs, gen_outputs, gen_config.buckets, bucket_id, gen_model.batch_size)
                 
-                # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
-                sample_responses                         = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
+                # 2. Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
+                sample_responses                  = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
                 
-                mixed_encoder  = list(np.concatenate((source_inputs, gen_inputs)))
-                mixed_decoder  = list(np.concatenate((source_outputs, sample_responses)))
-                mixed_labels   = list(np.concatenate(([1]*gen_model.batch_size, [0]*gen_model.batch_size)))
+                #Combine source and sampled 
+                combined_encoder                  = list(np.concatenate((source_inputs, gen_inputs)))
+                combined_decoder                  = []
+                combined_decoder.extend(source_outputs)
+                combined_decoder.extend(sample_responses.T.tolist())
+                combined_labels                   = list(np.concatenate(([1]*gen_model.batch_size, [0]*gen_model.batch_size)))
 
-                train_inputs, train_labels, train_masks    = data_utils.src_to_disc(mixed_encoder, mixed_decoder, mixed_labels, disc_config.max_len)
+                train_inputs, train_labels, train_masks    = data_utils.src_to_disc(combined_encoder, combined_decoder, combined_labels, disc_config.max_len)
                
-                # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
+                # 3. Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
+                disc_l = disc_model.disc_step(sess, train_inputs, train_labels, train_masks)
+                disc_loss.append(disc_l)
+
                 print('Discriminator input/labels:')
                 print(train_inputs)
                 print(train_labels)
-
-                disc_l = disc_model.disc_step(sess, train_inputs, train_labels, train_masks)
-                disc_loss.append(disc_l)
                 
-                pickle.dump(disc_loss, open("disc_loss.p", "wb"))
-
             for i in range(gen_config.iters):
                 
                 #Sample bucket id according to train_buckets_scale                
@@ -394,48 +398,55 @@ def _al_train():
 
                 print("===============================Update Generator %d.%d=============================" % (gstep, i))
                 # 1.Sample (X,Y) from real data
-                source_inputs, source_outputs               = gen_model._get_batch(train_set, bucket_id, 0)
+                source_inputs, source_outputs           = gen_model._get_batch(train_set, bucket_id)
 
-                encoder, decoder, weights                   = data_utils.src_to_gen(source_inputs, source_outputs, gen_config.buckets, bucket_id, gen_model.batch_size) 
+                encoder_inputs, decoder_inputs, weights = data_utils.src_to_gen(source_inputs, source_outputs, gen_config.buckets, bucket_id, gen_model.batch_size) 
 
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
-                sample_response                             = gens.sample_from(sess, encoder, bucket_id, gen_config, gen_model, vocab)
+                sample_responses                            = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
 
-                sample_labels                               = [0]*gen_model.batch_size
+                sample_labels                           = [0]*gen_model.batch_size
 
-                train_inputs, train_labels, train_masks     = data_utils.src_to_disc(encoder, sample_response, sample_labels, disc_config.max_len)
+                train_inputs, train_labels, train_masks = data_utils.src_to_disc(source_inputs, sample_responses.T.tolist(), sample_labels, disc_config.max_len)
                 
                 # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
-                reward                                      = disc_model.disc_step(sess,  train_inputs, train_labels, train_masks, do_train=False)
+                reward  = disc_model.disc_step(sess,  train_inputs, train_labels, train_masks, do_train = False)
+                rewards.append(reward)
                 
+                steps.append(gstep)
+
                 print("Step %d, here are the discriminator inputs/labels on which we calculate reward:" % gstep)
                 print(train_inputs)
                 print(train_labels)
                 print("Step %d, here are the discriminator logits:" % gstep)
-                
-                steps.append(gstep)
-                pickle.dump(steps, open("steps.p", "wb"))
-
                 print(reward)
-                rewards.append(reward)
-                pickle.dump(rewards, open("rewards.p", "wb"))
-                
-                # 4.Update G on (X, ^Y ) using reward r
-                decoder_inputs  = data_utils.transform_responses(sample_response) #TODO
 
-                gen_model.step(sess, encoder, decoder_inputs, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN, reward=reward[:, 1])
+                # 4.Update G on (X, ^Y ) using reward r
+                import pdb; pdb.set_trace()
+                decoder_inputs  = data_utils.transform_responses(sample_responses, gen_config.buckets, bucket_id) #TODO
+
+                gen_model.step(sess, encoder_inputs, decoder_inputs, weights, bucket_id, mode = gen_model.SM_POLICY_TRAIN, reward = reward[:, 1])
 
          
             # 5.Teacher-Forcing: Update G on (X, Y )
 
             for i in range(gen_config.force_iters):
                 print("===========================Force Generator %d.%d=============================" % (gstep, i))
-                _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, mode = gen_model.SM_TRAIN)
+                _, loss, _ = gen_model.step(sess, encoder_inputs, decoder_inputs, weights, bucket_id, mode = gen_model.SM_TRAIN)
+                perplexity.append(loss)
+            
+            if gstep % disc_config.plot_every:
 
+                pickle.dump(disc_loss,  open("disc_loss.p",  "wb"))
+                pickle.dump(disc_steps, open("disc_steps.p", "wb"))
+                pickle.dump(steps,      open("steps.p",      "wb"))
+                pickle.dump(rewards,    open("rewards.p",    "wb"))
+                pickle.dump(perplexity, open("perplexity.p", "wb"))
+                pickle.dump(gen_steps,  open("gen_steps.p",  "wb"))
 
-        # add checkpoint
-        checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))
-        checkpoint_prefix = os.path.join(checkpoint_dir, "disc.model")
+        # Add checkpoint
+        checkpoint_dir      = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))
+        checkpoint_prefix   = os.path.join(checkpoint_dir, "disc.model")
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         pass
@@ -484,7 +495,7 @@ def main(_):
         gen_pre_train2()
     else:
         print ("Runinng Adversarial")        
-        al_train()
+        _al_train()
 
 
 if __name__ == "__main__":

@@ -345,12 +345,9 @@ def _al_train():
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size 
                                                 for i in xrange(len(train_bucket_sizes))]
 
-        rewards    = []
-        steps      = []
-        perplexity = []
-        disc_loss  = []
-        disc_steps = []
-        gen_steps  = []
+        perplexity, rewards, disc_loss = [], [], []
+        steps, disc_steps, gen_steps   = [], [], []
+        
         gstep      = 0
 
         while True:   
@@ -373,12 +370,13 @@ def _al_train():
                 
                 # 2. Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
                 sample_responses                  = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
-                
+                #TODO Sample function doesn't work
+ 
                 #Combine source and sampled 
                 combined_encoder                  = list(np.concatenate((source_inputs, gen_inputs)))
                 combined_decoder                  = []
                 combined_decoder.extend(source_outputs)
-                combined_decoder.extend(sample_responses.T.tolist())
+                combined_decoder.extend(sample_responses.tolist())
                 combined_labels                   = list(np.concatenate(([1]*gen_model.batch_size, [0]*gen_model.batch_size)))
 
                 train_inputs, train_labels, train_masks    = data_utils.src_to_disc(combined_encoder, combined_decoder, combined_labels, disc_config.max_len)
@@ -399,15 +397,14 @@ def _al_train():
                 print("===============================Update Generator %d.%d=============================" % (gstep, i))
                 # 1.Sample (X,Y) from real data
                 source_inputs, source_outputs           = gen_model._get_batch(train_set, bucket_id)
-
                 encoder_inputs, decoder_inputs, weights = data_utils.src_to_gen(source_inputs, source_outputs, gen_config.buckets, bucket_id, gen_model.batch_size) 
 
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
-                sample_responses                            = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
-
+                sample_responses                        = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
+                
                 sample_labels                           = [0]*gen_model.batch_size
 
-                train_inputs, train_labels, train_masks = data_utils.src_to_disc(source_inputs, sample_responses.T.tolist(), sample_labels, disc_config.max_len)
+                train_inputs, train_labels, train_masks = data_utils.src_to_disc(source_inputs, sample_responses.tolist(), sample_labels, disc_config.max_len)
                 
                 # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
                 reward  = disc_model.disc_step(sess,  train_inputs, train_labels, train_masks, do_train = False)
@@ -422,9 +419,8 @@ def _al_train():
                 print(reward)
 
                 # 4.Update G on (X, ^Y ) using reward r
+                decoder_inputs  = data_utils.transform_responses(sample_responses.tolist(), gen_config.buckets, bucket_id) #TODO
                 import pdb; pdb.set_trace()
-                decoder_inputs  = data_utils.transform_responses(sample_responses, gen_config.buckets, bucket_id) #TODO
-
                 gen_model.step(sess, encoder_inputs, decoder_inputs, weights, bucket_id, mode = gen_model.SM_POLICY_TRAIN, reward = reward[:, 1])
 
          

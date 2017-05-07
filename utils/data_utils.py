@@ -636,12 +636,15 @@ def src_to_gen(source_encoder, source_decoder, _buckets, bucket_id, batch_size):
     return batch_encoder_inputs, batch_decoder_inputs, batch_weights
 
 
-def transform_responses(responses):
-    decoder_inputs = []
+def transform_responses(responses, _buckets, bucket_id):
+
+    decoder_inputs  = []
+    dec_size        = _buckets[bucket_id][1]
+    
     for res in responses:
-        dec_gen = [GO_ID] + res[:gen_config.buckets[bucket_id][1]]
-        if len(dec_gen) < gen_config.buckets[bucket_id][1]:
-            dec_gen = dec_gen + [0] * (gen_config.buckets[bucket_id][1] - len(dec_gen))
+        dec_gen = [GO_ID] + res[:dec_size]
+        if len(dec_gen) < dec_size:
+            dec_gen = dec_gen + [0] * (dec_size - len(dec_gen))
         dec_gen = np.reshape(dec_gen, (-1, 1))
         decoder_inputs.append(dec_gen)
     decoder_inputs = np.transpose(np.asarray(decoder_inputs))

@@ -369,8 +369,13 @@ def decode_file(fname):
 #    pickle.dump((vset,vlabels),f)
 #  return tset, vset
 
-''' Dataset functions: '''
 
+
+''' ====================================================================
+    ====================================================================
+        Dataset functions: 
+    ====================================================================
+    ===================================================================='''
 def create_dataset(fname, is_disc=True):
 
     with open(fname,'r') as f:
@@ -452,6 +457,15 @@ def gen_dataset_w_false_ex(dataset):
       
     return mixed_dataset
 
+
+
+''' ====================================================================
+   ====================================================================
+        Disc functions: 
+    ====================================================================
+    ===================================================================='''
+
+
 def _padding(data, max_len):
     # Get lengths of each row of data
     lens        = np.array([len(i) for i in data])
@@ -500,7 +514,7 @@ def convert_to_format(dataset):
 
 
 
-def disc_load_data(max_len, fname, n_words=25000, valid_portion=0.1):
+def disc_load_data(max_len, fname, valid_portion=0.1):
  
     dataset                     = create_dataset(fname)
     mixed_dataset               = gen_dataset_w_false_ex(dataset)
@@ -537,8 +551,28 @@ def batch_iter(data,batch_size):
         return_mask_x = mask_x[:,start_index:end_index]
         yield (return_x,return_y,return_mask_x)
 
-  
-def read_data(dataset, _buckets, max_size=None):
+
+def src_to_disc(src_encoder, src_decoder, src_labels, max_len):
+
+    dataset = {}
+    dataset['context']  = src_encoder
+    dataset['response'] = src_decoder
+    dataset['label']    = src_labels
+
+    train_inputs, train_labels, train_masks = convert_to_format(dataset_padding(dataset, max_len))
+
+    return train_inputs, train_labels, train_masks    
+
+
+
+''' ====================================================================
+   ====================================================================
+        Gen functions: 
+    ====================================================================
+    ===================================================================='''
+
+
+def split_into_buckets(dataset, _buckets, max_size=None):
     
     data_set = [[] for _ in _buckets]
     for i in range(dataset['len']):
@@ -547,25 +581,69 @@ def read_data(dataset, _buckets, max_size=None):
         source_ids = dataset['context'][i]
         target_ids = dataset['response'][i]
 
-        target_ids.append(EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets): 
             if len(source_ids) < source_size and len(target_ids) < target_size:
                 data_set[bucket_id].append([source_ids, target_ids])
                 break
     return data_set
 
-def prepare_data(gen_config):
-    
-    train_path                  = os.path.join(gen_config.data_dir, gen_config.train_data_file)
-    vocab, rev_vocab            = initialize_vocabulary(gen_config.vocab_path)
-    dataset                     = create_dataset(train_path, is_disc = False)
-    train_dataset, dev_dataset  = split_dataset(dataset, ratio = gen_config.train_ratio )
 
-    # Read data into buckets and compute their sizes.
-    print ("Reading development and training data (limit: %d)." % gen_config.max_train_data_size)
-    train_set, dev_set = read_data(train_dataset, gen_config.buckets, gen_config.max_train_data_size), read_data(dev_dataset, gen_config.buckets)
+def src_to_gen(source_encoder, source_decoder, _buckets, bucket_id, batch_size):
 
-    return vocab, rev_vocab, dev_set, train_set
+    encoder_size, decoder_size        = _buckets[bucket_id]
+    encoder_inputs, decoder_inputs    = [], []
+           
+    for encoder_input in source_encoder:
+    # Encoder inputs are padded and then reversed.
+        encoder_pad = [PAD_ID] * (encoder_size - len(encoder_input))
+        encoder_inputs.append(list(reversed(encoder_input + encoder_pad)))
+
+    for decoder_input in source_decoder:
+        # Decoder inputs get an extra "GO" symbol, and are padded then.
+        decoder_pad_size = decoder_size - len(decoder_input) - 2
+        decoder_inputs.append([GO_ID] + decoder_input + [EOS_ID] + [PAD_ID] * decoder_pad_size)
+
+    # Now we create batch-major vectors from the data selected above.
+    batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
+
+    # Batch encoder inputs are just re-indexed encoder_inputs.
+    for length_idx in xrange(encoder_size):
+        batch_encoder_inputs.append(
+            np.array([encoder_inputs[batch_idx][length_idx]
+                for batch_idx in xrange(batch_size)], dtype=np.int32))
+    # at this point, batch_encoder_inputs are transposed, enc_size*batch_size
+
+    # Batch decoder inputs are re-indexed decoder_inputs, we create weights.
+    for length_idx in xrange(decoder_size):
+        batch_decoder_inputs.append(
+            np.array([decoder_inputs[batch_idx][length_idx]
+                for batch_idx in xrange(batch_size)], dtype=np.int32))
+
+    # Each line is a word across the entire batch. Some of them are just pads, some are real
+
+    # Create target_weights to be 0 for targets that are padding.
+    batch_weight = np.ones(batch_size, dtype=np.float32)
+    for batch_idx in xrange(batch_size):
+        # We set weight to 0 if the corresponding target is a PAD symbol.
+        # The corresponding target is decoder_input shifted by 1 forward.
+        if length_idx < decoder_size - 1:
+                target = decoder_inputs[batch_idx][length_idx + 1]
+        if length_idx == decoder_size - 1 or target == data_utils.PAD_ID:
+                batch_weight[batch_idx] = 0.0
+        batch_weights.append(batch_weight)
+
+    return batch_encoder_inputs, batch_decoder_inputs, batch_weights
 
 
-  
+def transform_responses(responses):
+    decoder_inputs = []
+    for res in responses:
+        dec_gen = [GO_ID] + res[:gen_config.buckets[bucket_id][1]]
+        if len(dec_gen) < gen_config.buckets[bucket_id][1]:
+            dec_gen = dec_gen + [0] * (gen_config.buckets[bucket_id][1] - len(dec_gen))
+        dec_gen = np.reshape(dec_gen, (-1, 1))
+        decoder_inputs.append(dec_gen)
+    decoder_inputs = np.transpose(np.asarray(decoder_inputs))
+    decoder_inputs = np.squeeze(decoder_inputs)
+
+    return decoder_inputs

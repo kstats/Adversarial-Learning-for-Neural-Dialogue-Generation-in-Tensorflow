@@ -7,7 +7,7 @@ class disc_config(object):
     lr_decay                    = 0.6
     max_grad_norm               = 5    
     keep_prob                   = 1.  
-    batch_size                  = 128
+    batch_size                  = 16
     embed_dim                   = 128
     class_num                   = 2
     init_scale                  = 0.1    
@@ -26,6 +26,9 @@ class disc_config(object):
 
     iters                       = 1
    # valid_num                   = 100
+
+    #after how many global steps should we pickle?
+    plot_every                  = 1
 
 class gen_config(object):
     

@@ -204,6 +204,9 @@ def gen_pre_train2():
 def al_train():
     # gen_config.batch_size = 1
     with tf.Session() as sess:
+        train_summary_dir = os.path.join(disc_config.out_dir, "summaries", "train")
+        train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
+
         initializer = tf.random_uniform_initializer(-1 * disc_config.init_scale, 1 * disc_config.init_scale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
@@ -218,9 +221,12 @@ def al_train():
         steps = []
         perplexity = []
         disc_loss = []
+        disc_steps = []
+        gen_steps = []
         gstep = 0
         while True:            
             gstep += 1
+            steps.append(gstep)
             for i in range(disc_config.iters):
                 bucket_id = min([j for j in xrange(len(train_buckets_scale))
                                  if train_buckets_scale[j] > np.random.random_sample()])
@@ -238,11 +244,14 @@ def al_train():
                 print('Discriminator input/labels:')
                 print(train_inputs)
                 print(train_labels)
+                disc_steps.append((gstep-1) * disc_config.iters + i)
                 disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
                 disc_loss.append(disc_l)
-                pickle.dump(disc_loss, open("disc_loss.p", "wb"))
+
 
             for i in range(gen_config.iters):
+                small_step = (gstep - 1) * gen_config.iters + i
+                gen_steps.append(small_step)
                 bucket_id = min([j for j in xrange(len(train_buckets_scale))
                                     if train_buckets_scale[j] > np.random.random_sample()])
 
@@ -262,16 +271,19 @@ def al_train():
                                                                                      temp=False)
                 # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
                 reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_train=False)
+                #import pdb; pdb.set_trace()
+                #rew = tf.summary.scalar("reward", tf.reduce_mean(reward[:,1]))
+                #summ = sess.run(rew)
+                #train_summary_writer.add_summary(summ, small_step)
+                #rew2 = tf.summary.scalar("reward2", tf.reduce_mean(reward[:, 1]).eval())
+                #sum2 = sess.run(rew2)
+                #train_summary_writer.add_summary(sum2, small_step)
                 print("Step %d, here are the discriminator inputs/labels on which we calculate reward:" % gstep)
                 print(train_inputs)
                 print(train_labels)
                 print("Step %d, here are the discriminator logits:" % gstep)
-                steps.append(gstep)
-                pickle.dump(steps, open("steps.p", "wb"))
-
                 print(reward)
-                rewards.append(reward)
-                pickle.dump(rewards, open("rewards.p", "wb"))
+                rewards.append(np.mean(reward[:,1]))
                 # 4.Update G on (X, ^Y ) using reward r
                 # import pdb; pdb.set_trace()
                 decoder_inputs = []
@@ -300,9 +312,16 @@ def al_train():
                 print("===========================Force Generator %d.%d=============================" % (gstep, i))
                 _, loss, _ = gen_model.step(sess, encoder, decoder, weights, bucket_id, mode=gen_model.SM_TRAIN)
 
-                # print("loss: ", loss)
-                # perplexity.append(loss)
+                #print("loss: ", loss)
+                perplexity.append(loss)
                 # pickle.dump(perplexity, open("perplexity.p", "wb"))
+            if gstep % disc_config.plot_every:
+                pickle.dump(disc_loss, open("disc_loss.p", "wb"))
+                pickle.dump(disc_steps, open("disc_steps.p", "wb"))
+                pickle.dump(steps, open("steps.p", "wb"))
+                pickle.dump(rewards, open("rewards.p", "wb"))
+                pickle.dump(perplexity, open("perplexity.p", "wb"))
+                pickle.dump(gen_steps, open("gen_steps.p", "wb"))
 
         # add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

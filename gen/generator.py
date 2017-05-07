@@ -242,7 +242,8 @@ def sample_from(sess, context, bucket_id, gen_config, model, vocab):
         break
 
     decoder_inputs=np.concatenate([decoder_inputs[1:,:],[np.zeros(gen_config.batch_size)]])
-    return np.transpose(decoder_inputs)
+    return np.transpose(decoder_inputs).astype('int32')
+
 
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
                            buckets, mc_search=True, debug=False):

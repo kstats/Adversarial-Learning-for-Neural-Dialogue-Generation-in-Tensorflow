@@ -401,3 +401,80 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab):
         rep.append(ret)
 
     return sample_context, sample_response, sample_labels, rep
+
+def _gen_guided_sample(sess, contexts,  gen_config, model, vocab):
+    
+    responses = []
+    for context in contexts:
+        
+        response = _get_sampled_sentence(sess, context, vocab, model, gen_config.buckets)
+        print ("Sampled response (of length %d): " % len(response))
+        print (ret)
+        rep.append(response)
+
+    return responses
+
+def _get_sampled_sentence(sess, input_token_ids, vocab, model, buckets):
+    
+    def model_step(enc_inp, dec_in, dptr, target_weights, bucket_id):
+        logits = model.step(sess, enc_inp, dec_in, target_weights, bucket_id, mode=model.SM_SAMPLE)
+        prob = softmax(logits[dptr][0])
+        return prob
+
+    import pdb; pdb.set_trace()
+    
+    bucket_id   = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
+    decoder_len = buckets[bucket_id][1]
+    
+    outputs = [ [] for _ in range(model.batch_size)]
+
+    #decoder inputs are just "go"
+    encoder_inputs, decoder_inputs, target_weights =  data_utils.src_to_gen(input_token_ids, outputs, buckets, bucket_id, model.batch_size)
+
+    for n in range(len(encoder_inputs)): encoder_inputs[n] = np.array([encoder_inputs[n][0]])
+    for n in range(len(decoder_inputs)): decoder_inputs[n] = np.array([decoder_inputs[n][0]])
+    for n in range(len(target_weights)): target_weights[n] = np.array([target_weights[n][0]])
+
+    # Get output logits for the setence. # initialize beams as (log_prob, empty_string, eos)
+    beams, new_beams, results = [(1,{'eos': False, 'dec_in': decoder_inputs, 'prob': 1})], [], []
+    
+    for dptr in range(decoder_len):
+        if dptr > 0:
+            if not new_beams:
+              break
+            target_weights[dptr] = [1.]
+            beams, new_beams     = new_beams[:1], []
+
+        for prob, cand in beams:
+            if cand['eos']:
+                results += [(prob, cand)]
+                continue
+
+            all_prob    = model_step(encoder_inputs, cand['dec_in'], dptr, target_weights, bucket_id)
+            all_prob    = all_prob.astype('float64')
+            all_prob    = all_prob / np.sum(all_prob)
+
+            try:
+              ca = np.where(np.random.multinomial(1, all_prob))[0][0]
+            except ValueError as e:
+              print(e)
+
+            new_cand = {
+                'eos'     : (ca == data_utils.EOS_ID),
+                'dec_in' : [(np.array([ca]) if i == (dptr + 1) else k) for i, k in enumerate(cand['dec_in'])],
+                'prob'    : cand['prob'] * all_prob[ca],
+            }
+            new_cand = (new_cand['prob'], new_cand)
+            heapq.heappush(new_beams, new_cand)
+   
+    results += beams  # flush last cands
+
+    # post-process results
+    res_cands = []
+    #for prob, cand in sorted(results, reverse=True):
+    temp = beams[0][1]['dec_in']
+    temp2 = [te[0] for te in temp]
+    temp2.pop(0)
+    print("Target weights for the sample I'm returning:")
+    print(target_weights)
+    return temp2

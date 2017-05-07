@@ -369,8 +369,9 @@ def _al_train():
                 encoder_inputs, decoder_inputs, _ = data_utils.src_to_gen(gen_inputs, gen_outputs, gen_config.buckets, bucket_id, gen_model.batch_size)
                 
                 # 2. Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
-                sample_responses                  = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
                 #TODO Sample function doesn't work
+                #sample_responses                  = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab) 
+                sample_responses                   = gens._get_sampled_sentence(sess, gen_inputs, vocab, gen_model, gen_config.buckets)
  
                 #Combine source and sampled 
                 combined_encoder                  = list(np.concatenate((source_inputs, gen_inputs)))
@@ -400,7 +401,8 @@ def _al_train():
                 encoder_inputs, decoder_inputs, weights = data_utils.src_to_gen(source_inputs, source_outputs, gen_config.buckets, bucket_id, gen_model.batch_size) 
 
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
-                sample_responses                        = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
+                #sample_responses                        = gens.sample_from(sess, encoder_inputs, bucket_id, gen_config, gen_model, vocab)
+                sample_responses                        =  gens._get_sampled_sentence(sess, source_inputs, vocab, gen_model, gen_config.buckets)
                 
                 sample_labels                           = [0]*gen_model.batch_size
 

@@ -680,4 +680,3 @@ def read_data(dataset, _buckets, max_size=None):
                 data_set[bucket_id].append([source_ids, target_ids])
                 break
     return data_set
-

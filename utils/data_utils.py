@@ -644,7 +644,7 @@ def transform_responses(responses, _buckets, bucket_id):
     for res in responses:
         dec_gen = [GO_ID] + res[:dec_size]
         if len(dec_gen) < dec_size:
-            dec_gen = dec_gen + [0] * (dec_size - len(dec_gen))
+            dec_gen = dec_gen + [PAD_ID] * (dec_size - len(dec_gen))
         dec_gen = np.reshape(dec_gen, (-1, 1))
         decoder_inputs.append(dec_gen)
     decoder_inputs = np.transpose(np.asarray(decoder_inputs))

@@ -176,6 +176,29 @@ class disc_rnn_model(object):
         session.run(self._lr_update,feed_dict={self.new_lr:lr_value})
     def assign_new_batch_size(self,session,batch_size_value):
         session.run(self._batch_size_update,feed_dict={self.new_batch_size:batch_size_value})
+        # discriminator api
+    
+    def disc_step(self, sess, train_inputs, train_labels, train_masks, do_train=True):
+        feed_dict={}
+
+        feed_dict[self.context] = train_inputs[:, 0, :]
+        feed_dict[self.response] = train_inputs[:, 1, :]
+        feed_dict[self.target] = train_labels
+
+        feed_dict[self.mask_c] = train_masks[:, :, 0]
+        feed_dict[self.mask_r] = train_masks[:, :, 1]
+
+        self.assign_new_batch_size(sess,len(train_inputs))
+        if do_train:
+            fetches = [self.cost,self.accuracy,self.train_op,self.summary]
+            cost,accuracy,_,summary = sess.run(fetches,feed_dict)
+            print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
+            return accuracy
+        else:        
+            fetches = [self.cost,self.accuracy,tf.nn.softmax(self.logits),self.summary]
+            cost,accuracy,logits,summary = sess.run(fetches,feed_dict)
+            return logits
+
 
 
 

@@ -419,7 +419,7 @@ def _al_train():
                 print(reward)
 
                 # 4.Update G on (X, ^Y ) using reward r
-                decoder_inputs  = data_utils.transform_responses(sample_responses.tolist(), gen_config.buckets, bucket_id) #TODO
+                decoder_inputs  = data_utils.transform_responses(sample_responses.tolist(), gen_config.buckets, bucket_id) #TODO this function creates data size violation
                 import pdb; pdb.set_trace()
                 gen_model.step(sess, encoder_inputs, decoder_inputs, weights, bucket_id, mode = gen_model.SM_POLICY_TRAIN, reward = reward[:, 1])
 

@@ -24,13 +24,14 @@ sys.path.append('../utils')
 # See seq2seq_model.Seq2SeqModel for details of how they work.
 
 
-def create_model(session, gen_config):
+def create_model(session, gen_config, forward_only=False):
     start_time  = time.time()        
     """Create generation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
                 gen_config.vocab_size, gen_config.vocab_size, gen_config.buckets,
                 gen_config.size, gen_config.num_layers, gen_config.max_gradient_norm, gen_config.batch_size,
-                gen_config.learning_rate, gen_config.learning_rate_decay_factor, keep_prob=gen_config.keep_prob)
+                gen_config.learning_rate, gen_config.learning_rate_decay_factor,
+                forward_only, keep_prob=gen_config.keep_prob)
 
     ckpt = tf.train.get_checkpoint_state(gen_config.train_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):

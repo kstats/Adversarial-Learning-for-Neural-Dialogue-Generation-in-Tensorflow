@@ -16,7 +16,8 @@ class Seq2SeqModel(object):
 
     def __init__(self, 
                 source_vocab_size, target_vocab_size, buckets, 
-                size, num_layers, max_gradient_norm, batch_size, learning_rate, learning_rate_decay_factor, 
+                size, num_layers, max_gradient_norm, batch_size, learning_rate, learning_rate_decay_factor,
+                forward_only,
                 keep_prob = 1., use_lstm = False, num_samples = 512, scope_name = 'gen_seq2seq', 
                 dtype = tf.float32):
     
@@ -36,8 +37,8 @@ class Seq2SeqModel(object):
             self.learning_rate_interval_op = self.learning_rate.assign(self.new_rate[0])
 
             self.global_step            = tf.Variable(0, trainable=False)
-
-            self.forward_only           = tf.placeholder(tf.bool, name = "forward_only")
+            #self.forward_only           = tf.placeholder(tf.bool, name = "forward_only")
+            self.forward_only           = forward_only
             self.do_projection          = tf.placeholder(tf.bool, name = "do_projection")
             self.tf_bucket_id           = tf.placeholder(tf.int32, name = "tf_bucket_id")
             
@@ -224,7 +225,7 @@ class Seq2SeqModel(object):
                            " %d != %d." % (len(target_weights), decoder_size))
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
-        input_feed = {self.forward_only.name : mode is self.SM_EVAL,
+        input_feed = {#self.forward_only.name : mode is self.SM_EVAL,
                       self.do_projection.name: mode is not self.SM_TRAIN,
                       self.tf_bucket_id: bucket_id}
  

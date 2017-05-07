@@ -174,6 +174,7 @@ class disc_rnn_model(object):
 
     def assign_new_lr(self,session,lr_value):
         session.run(self._lr_update,feed_dict={self.new_lr:lr_value})
+
     def assign_new_batch_size(self,session,batch_size_value):
         session.run(self._batch_size_update,feed_dict={self.new_batch_size:batch_size_value})
         # discriminator api
@@ -198,23 +199,3 @@ class disc_rnn_model(object):
             fetches = [self.cost,self.accuracy,tf.nn.softmax(self.logits),self.summary]
             cost,accuracy,logits,summary = sess.run(fetches,feed_dict)
             return logits
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

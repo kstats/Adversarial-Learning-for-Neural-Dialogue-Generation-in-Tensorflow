@@ -3,7 +3,7 @@ class disc_config(object):
     
     hidden_layer_num            = 1
     hidden_neural_size          = 512
-    lr                          = 0.005
+    lr                          = 0.01
     lr_decay                    = 0.6
     max_grad_norm               = 5    
     keep_prob                   = 1.  
@@ -24,7 +24,7 @@ class disc_config(object):
     num_epoch                   = 60
     max_decay_epoch             = 30
 
-    iters                       = 1
+    iters                       = 10
    # valid_num                   = 100
 
     #after how many global steps should we pickle?
@@ -34,7 +34,7 @@ class gen_config(object):
     
     num_layers                  = 1
     size                        = 512
-    learning_rate               = 0.05
+    learning_rate               = 0.01
     learning_rate_decay_factor  = 0.99
     max_gradient_norm           = 5.0
     keep_prob                   = 1.

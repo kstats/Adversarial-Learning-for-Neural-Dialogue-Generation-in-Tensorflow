@@ -23,6 +23,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
     # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
     #                                             gen_inputs, gen_outputs, mc_search=mc_search)
     sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab, bucket_id)
+    # sample_responses_test  = gens.sample_from(sess, gen_inputs, bucket_id, gen_config, gen_model, vocab)
 
     #for n in range(len(sample_response)):
      #   if n % 2 == 1:
@@ -284,13 +285,19 @@ def al_train():
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
 
+        disc_checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))
+        disc_checkpoint_path = os.path.join(disc_checkpoint_dir, "disc.model")
+        gen_checkpoint_path = os.path.join(gen_config.train_dir, "chitchat.model")
+
         rewards = []
         steps = []
         perplexity = []
         disc_loss = []
+        gen_loss = []
         disc_steps = []
         gen_steps = []
         gstep = 0
+        cumulative_step = 0
         while True:            
             gstep += 1
             steps.append(gstep)
@@ -315,7 +322,8 @@ def al_train():
                 # disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
                 # import pdb; pdb.set_trace()
                 disc_l = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
-                disc_loss.append(disc_l)
+                disc_loss.append((cumulative_step,disc_l))
+                cumulative_step += 1                
 
             i = 0
             mean_prob = 0
@@ -359,8 +367,10 @@ def al_train():
                 gan_rewards = -np.log(reward[:,1]) + np.log(reward[:,0])
                 print("GAN cost:")
                 print(gan_rewards)
+                gan_loss = np.mean(gan_rewards)
                 print("GAN mean cost:")                
-                print(np.mean(gan_rewards))
+                print(gan_loss)
+                gen_loss.append((cumulative_step, gan_loss))
                 # 4.Update G on (X, ^Y ) using reward r
                 # import pdb; pdb.set_trace()
                 decoder_inputs = []
@@ -378,6 +388,7 @@ def al_train():
                                reward=gan_rewards)
 
                 i += 1
+                cumulative_step += 1
 
             '''dec_gen = []
             for i in range(len(responses)):
@@ -395,13 +406,18 @@ def al_train():
                 #print("loss: ", loss)
                 perplexity.append(loss)
                 # pickle.dump(perplexity, open("perplexity.p", "wb"))
-            if gstep % disc_config.plot_every:
+            if gstep % disc_config.plot_every == 0:
                 pickle.dump(disc_loss, open("disc_loss.p", "wb"))
+                pickle.dump(gen_loss, open("gen_loss.p", "wb"))
                 pickle.dump(disc_steps, open("disc_steps.p", "wb"))
                 pickle.dump(steps, open("steps.p", "wb"))
                 pickle.dump(rewards, open("rewards.p", "wb"))
                 pickle.dump(perplexity, open("perplexity.p", "wb"))
                 pickle.dump(gen_steps, open("gen_steps.p", "wb"))
+
+            if gstep > 0 and gstep % 40 == 0:
+                gen_model.saver.save(sess, gen_checkpoint_path, global_step=gen_model.global_step)
+                guided_disc_model.saver.save(sess,disc_checkpoint_path,global_step=guided_disc_model.global_step)
 
         # add checkpoint
         checkpoint_dir = os.path.abspath(os.path.join(disc_config.out_dir, "checkpoints"))

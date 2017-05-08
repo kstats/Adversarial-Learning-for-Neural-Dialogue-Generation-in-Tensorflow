@@ -176,12 +176,13 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
 
 
 # pre train discriminator
-def disc_pre_train():
-    gen_config.batch_size = 1
+def disc_pre_train():    
     with tf.Session() as sess:
         initializer = tf.random_uniform_initializer(-1 * disc_config.init_scale, 1 * disc_config.init_scale)
-        with tf.variable_scope("model", reuse=None, initializer=initializer):
-            disc_model = discs.create_model(sess, disc_config, is_training=True)
+        # with tf.variable_scope("model", reuse=None, initializer=initializer):
+        #     disc_model = discs.create_model(sess, disc_config, is_training=True)
+        with tf.variable_scope("guided_disc", reuse=None, initializer=initializer):
+            guided_disc_model = discs.create_guided_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
         vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
@@ -194,11 +195,11 @@ def disc_pre_train():
             os.makedirs(checkpoint_dir)
 
         while True:
-            gstep = disc_model.global_step.eval()
+            gstep = guided_disc_model.global_step.eval()
             random_number_01 = np.random.random_sample()
             bucket_id = min([i for i in xrange(len(train_buckets_scale))
                              if train_buckets_scale[i] > random_number_01])
-            print("========lr=%f==============Update Discriminator step %d=======================" % (disc_model.lr.eval(),gstep))
+            print("========lr=%f==============Update Discriminator step %d=======================" % (guided_disc_model.lr.eval(),gstep))
             # 1.Sample (X,Y) from real data
 
 
@@ -209,12 +210,11 @@ def disc_pre_train():
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
                                                                          source_inputs, source_outputs, gen_inputs, gen_outputs, bucket_id, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
-            guided_disc_step(sess, disc_model, train_inputs, train_labels, train_masks, isTrain = False)
-
-            if gstep > 0 and gstep % 600 == 0:
-                sess.run(disc_model.lr.assign(disc_model.lr.eval()*0.6),[])
-            if gstep > 0 and gstep % 1000 == 0:
-                path = disc_model.saver.save(sess,checkpoint_prefix,global_step=disc_model.global_step)
+            disc_l = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
+            if gstep > 0 and gstep % 20 == 0:
+                sess.run(guided_disc_model.lr.assign(guided_disc_model.lr.eval()*0.6),[])
+            if gstep > 0 and gstep % 10 == 0:
+                path = guided_disc_model.saver.save(sess,checkpoint_prefix,global_step=guided_disc_model.global_step)
                 print("Saved model chechpoint to{}\n".format(path))
 
 
@@ -273,8 +273,8 @@ def al_train():
         train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
         initializer = tf.random_uniform_initializer(-1 * disc_config.init_scale, 1 * disc_config.init_scale)
-        with tf.variable_scope("model", reuse=None, initializer=initializer):
-            disc_model = discs.create_model(sess, disc_config, is_training=True)
+        # with tf.variable_scope("model", reuse=None, initializer=initializer):
+        #     disc_model = discs.create_model(sess, disc_config, is_training=True)
         with tf.variable_scope("guided_disc", reuse=None, initializer=initializer):
             guided_disc_model = discs.create_guided_model(sess, disc_config, is_training=True)
         gen_model = gens.create_model(sess, gen_config)
@@ -317,8 +317,9 @@ def al_train():
                 disc_l = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
                 disc_loss.append(disc_l)
 
-
-            for i in range(gen_config.iters):
+            i = 0
+            mean_prob = 0
+            while i < gen_config.iters or mean_prob < 0.4:
                 small_step = (gstep - 1) * gen_config.iters + i
                 gen_steps.append(small_step)
                 bucket_id = min([j for j in xrange(len(train_buckets_scale))
@@ -351,11 +352,14 @@ def al_train():
                 print(train_labels)
                 print("Step %d, here are the discriminator logits:" % gstep)
                 print(reward)
+                mean_prob = np.mean(reward[:,1])
+                print("Mean logits:")
+                print(mean_prob)
                 rewards.append(np.mean(reward[:,1]))
                 gan_rewards = -np.log(reward[:,1]) + np.log(reward[:,0])
                 print("GAN cost:")
                 print(gan_rewards)
-                print("GAN mean cost:")
+                print("GAN mean cost:")                
                 print(np.mean(gan_rewards))
                 # 4.Update G on (X, ^Y ) using reward r
                 # import pdb; pdb.set_trace()
@@ -372,6 +376,8 @@ def al_train():
                 gen_model.step(sess, encoder, decoder_inputs, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN,
                                # reward=reward[:,1])
                                reward=gan_rewards)
+
+                i += 1
 
             '''dec_gen = []
             for i in range(len(responses)):

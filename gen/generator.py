@@ -344,8 +344,6 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
     temp = beams[0][1]['dec_inp']
     temp2 = [te[0] for te in temp]
     temp2.pop(0)
-    print("Target weights for the sample I'm returning:")
-    print(target_weights)
     return temp2
 
 
@@ -393,10 +391,9 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, bu
         ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets, bucket_id)
         sample_response.append([ret])
         sample_context.append(con)
-        sample_labels.append(0)
-        print ("Sampled response (of length %d): " % len(ret))
-
-        print (ret)
+        sample_labels.append(0)        
         rep.append(ret)
 
+    print("gen_guided_sample returns samples:")
+    print(rep)
     return sample_context, sample_response, sample_labels, rep

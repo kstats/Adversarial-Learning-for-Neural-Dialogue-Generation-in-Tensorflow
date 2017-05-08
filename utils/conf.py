@@ -53,6 +53,6 @@ class gen_config(object):
     steps_per_checkpoint        = 8000
     steps_per_sample            = 150
     
-    iters                       = 50
+    iters                       = 1
     force_iters                 = 0
     buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

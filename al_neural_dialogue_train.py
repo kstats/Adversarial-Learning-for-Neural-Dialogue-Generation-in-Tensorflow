@@ -90,7 +90,42 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
 # discriminator api
 def disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_train=True):
     feed_dict={}
+    import pdb; pdb.set_trace()
+    feed_dict[disc_model.context] = train_inputs[:, 0, :]
+    feed_dict[disc_model.response] = train_inputs[:, 1, :]
+    feed_dict[disc_model.target] = train_labels
 
+    feed_dict[disc_model.mask_c] = train_masks[:, :, 0]
+    feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
+
+    disc_model.assign_new_batch_size(sess,len(train_inputs))
+    if do_train:
+        fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op,disc_model.summary]
+        cost,accuracy,_,summary = sess.run(fetches,feed_dict)
+        print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
+        return accuracy
+    else:        
+        fetches = [disc_model.cost,disc_model.accuracy,tf.nn.softmax(disc_model.logits),disc_model.summary]
+        cost,accuracy,logits,summary = sess.run(fetches,feed_dict)
+        return logits
+
+
+def guided_disc_step(sess, disc_model, train_inputs, train_labels, train_masks, bucket_id, do_train=True):
+    def disc_to_gen_format(inp):
+        # inp is a list of context/answer in disc format.
+        ctx=inp[:,0,:]
+        answer=inp[:,1,:]
+        blen = disc_model.gen_model.buckets[i]
+
+        rc1 = np.flip(ctx[:,:blen[0]],1)
+        rc2 = answer[:,:blen[1]-1]
+        batch_size = len(ctx)
+        go_vec = np.ones(batch_size).astype('int')*data_util.GO_ID
+        rc2 = np.concatenate([go_vec.T,rc1],axis=1)
+        return rc1, rc2
+
+    feed_dict={}
+    import pdb; pdb.set_trace()
     feed_dict[disc_model.context] = train_inputs[:, 0, :]
     feed_dict[disc_model.response] = train_inputs[:, 1, :]
     feed_dict[disc_model.target] = train_labels
@@ -144,7 +179,7 @@ def disc_pre_train():
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
                                                                          source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
-            disc_step(sess, disc_model, train_inputs, train_labels, train_masks, isTrain = False)
+            guided_disc_step(sess, disc_model, train_inputs, train_labels, train_masks, isTrain = False)
 
             if gstep > 0 and gstep % 600 == 0:
                 sess.run(disc_model.lr.assign(disc_model.lr.eval()*0.6),[])
@@ -245,7 +280,7 @@ def al_train():
                 print(train_inputs)
                 print(train_labels)
                 disc_steps.append((gstep-1) * disc_config.iters + i)
-                disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+                disc_l = guided_disc_step(sess, disc_model, train_inputs, train_labels, train_masks, bucket_id)
                 disc_loss.append(disc_l)
 
 

@@ -19,10 +19,10 @@ def gen_pre_train():
     gens.train(gen_config)
 
 # prepare data for discriminator and generator
-def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True, temp=True):
+def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, bucket_id, mc_search=False, isDisc=True, temp=True):
     # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,
     #                                             gen_inputs, gen_outputs, mc_search=mc_search)
-    sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab)
+    sample_context, sample_response, sample_labels, responses = gens.gen_guided_sample(sess, gen_inputs, gen_outputs, gen_config, gen_model, vocab, bucket_id)
 
     #for n in range(len(sample_response)):
      #   if n % 2 == 1:
@@ -90,6 +90,7 @@ def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_i
 # discriminator api
 def disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_train=True):
     feed_dict={}
+
     feed_dict[disc_model.context] = train_inputs[:, 0, :]
     feed_dict[disc_model.response] = train_inputs[:, 1, :]
     feed_dict[disc_model.target] = train_labels
@@ -206,7 +207,7 @@ def disc_pre_train():
             _, _, _, gen_inputs, gen_outputs = gen_model.get_batch(train_set, bucket_id, 0)
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
             train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
-                                                                         source_inputs, source_outputs, gen_inputs, gen_outputs, mc_search=False, isDisc=True)
+                                                                         source_inputs, source_outputs, gen_inputs, gen_outputs, bucket_id, mc_search=False, isDisc=True)
             # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
             guided_disc_step(sess, disc_model, train_inputs, train_labels, train_masks, isTrain = False)
 
@@ -243,7 +244,7 @@ def gen_pre_train2():
 
             # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X) with Monte Carlo search
             train_inputs, train_labels, train_masks, responses = disc_train_data(sess,gen_model,vocab,
-                                                        source_inputs,source_outputs, source_inputs, source_outputs, mc_search=False, isDisc = False, temp=False)
+                                                        source_inputs,source_outputs, source_inputs, source_outputs, bucket_id, mc_search=False, isDisc = False, temp=False)
             # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
             reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks,do_train = False)
             print("Step %d, here are the discriminator logits:" % gstep)
@@ -304,7 +305,7 @@ def al_train():
                 # 2.Sample (X,Y) and (X, ^Y) through ^Y ~ G(*|X)
                 train_inputs, train_labels, train_masks, _ = disc_train_data(sess, gen_model, vocab,
                                                                              source_inputs, source_outputs, gen_inputs,
-                                                                             gen_outputs, mc_search=False, isDisc=True,
+                                                                             gen_outputs, bucket_id, mc_search=False, isDisc=True,
                                                                              temp=True)
                 # 3.Update D using (X, Y ) as positive examples and(X, ^Y) as negative examples
                 print('Discriminator input/labels:')
@@ -333,7 +334,7 @@ def al_train():
                 #                                             source_inputs,source_outputs,source_inputs,source_outputs, mc_search=True, isDisc=False)
                 train_inputs, train_labels, train_masks, responses = disc_train_data(sess, gen_model, vocab,
                                                                                      source_inputs, source_outputs,
-                                                                                     source_inputs, source_outputs,
+                                                                                     source_inputs, source_outputs,bucket_id,
                                                                                      mc_search=False, isDisc=False,
                                                                                      temp=False)
                 # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search

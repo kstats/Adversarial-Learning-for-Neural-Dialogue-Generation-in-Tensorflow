@@ -245,7 +245,7 @@ def sample_from(sess, context, bucket_id, gen_config, model, vocab):
     return np.transpose(decoder_inputs)
 
 def get_sampled_sentence(sess, input_token_ids, vocab, model,
-                           buckets, mc_search=True, debug=False):
+                           buckets, bucket_id, mc_search=True, debug=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
         logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, mode=model.SM_SAMPLE)
         #TODO fix this to not just take the first item in the batch...
@@ -254,7 +254,7 @@ def get_sampled_sentence(sess, input_token_ids, vocab, model,
 
 
     # Which bucket does it belong to?
-    bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
+    #bucket_id = min([b for b in range(len(buckets)) if buckets[b][0] > len(input_token_ids)])
     outputs = []
 
     feed_data = {bucket_id: [(input_token_ids, outputs)]}
@@ -380,7 +380,7 @@ def gen_sample(sess ,gen_config, model, vocab, source_inputs, source_outputs, mc
     return sample_context, sample_response, sample_labels, rep
     pass
 
-def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab):
+def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, bucket_id):
     sample_context = []
     sample_response = []
     sample_labels = []
@@ -390,7 +390,7 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab):
         sample_context.append(con)
         sample_labels.append(1)
         
-        ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets)
+        ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets, bucket_id)
         sample_response.append([ret])
         sample_context.append(con)
         sample_labels.append(0)

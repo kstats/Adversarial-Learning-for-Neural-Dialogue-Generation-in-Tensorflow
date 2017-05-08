@@ -189,6 +189,7 @@ class Seq2SeqModel(object):
             for b in xrange(len(buckets)):
                 adjusted_losses         = tf.mul(self.losses[b], self.reward[b])
                 nentropy                = tf.log(self.output_q[b]) + 0.5 * tf.square(tf.log(self.output_q[b]))
+                # nentropy                = tf.log(self.output_q[b])
                 # policy_losses           = -tf.mul(tf.log(self.output_q[b]), tf.cast(self.reward[b],tf.float64))
                 policy_losses           = 0.0001*nentropy-tf.mul(tf.log(self.output_q[b]), tf.cast(self.reward[b],tf.float64))
                 gradients               = tf.gradients(adjusted_losses, self.tvars)

@@ -124,20 +124,21 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
         rc2 = np.concatenate([np.transpose([go_vec]),rc2],axis=1)
         return rc1, rc2
 
-    # halve everything (gen batch size idiocy)
+    # halve everything (gen batch size idiocy), but only if we're training, then we have double the size of examples (pos+neg)...
 
     batch_size = len(train_inputs)
-    pos = train_inputs[0:batch_size/4,:,:]
-    neg = train_inputs[batch_size/2:batch_size/2+batch_size/4,:,:]
-    train_inputs = np.concatenate([pos,neg])    
-    posl = train_labels[0:batch_size/4]
-    negl = train_labels[batch_size/2:batch_size/2+batch_size/4]
-    train_labels = np.concatenate([posl,negl])
-    posm = train_masks[:,0:batch_size/4,:]
-    negm = train_masks[:,batch_size/2:batch_size/2+batch_size/4,:]
-    train_masks = np.concatenate([posm,negm],1)
+    if do_train:
+        pos = train_inputs[0:batch_size/4,:,:]
+        neg = train_inputs[batch_size/2:batch_size/2+batch_size/4,:,:]
+        train_inputs = np.concatenate([pos,neg])    
+        posl = train_labels[0:batch_size/4]
+        negl = train_labels[batch_size/2:batch_size/2+batch_size/4]
+        train_labels = np.concatenate([posl,negl])
+        posm = train_masks[:,0:batch_size/4,:]
+        negm = train_masks[:,batch_size/2:batch_size/2+batch_size/4,:]
+        train_masks = np.concatenate([posm,negm],1)
 
-    batch_size = batch_size / 2
+        batch_size = batch_size / 2
 
     encoder_inputs, decoder_inputs = disc_to_gen_format(train_inputs)
     feed_dict = {gen_model.forward_only.name : False,
@@ -164,7 +165,6 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
     disc_model.assign_new_batch_size(sess,len(train_inputs))
     if do_train:        
         fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op]
-        import pdb; pdb.set_trace()
         cost,accuracy,_ = sess.run(fetches,feed_dict)
         print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
         return accuracy
@@ -311,9 +311,9 @@ def al_train():
                 print(train_inputs)
                 print(train_labels)
                 disc_steps.append((gstep-1) * disc_config.iters + i)
-                disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
+                # disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
                 # import pdb; pdb.set_trace()
-                disc_l2 = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
+                disc_l = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
                 disc_loss.append(disc_l)
 
 
@@ -337,7 +337,7 @@ def al_train():
                                                                                      mc_search=False, isDisc=False,
                                                                                      temp=False)
                 # 3.Compute Reward r for (X, ^Y ) using D.---based on Monte Carlo search
-                reward = disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_train=False)
+                reward = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id, do_train=False)
                 #import pdb; pdb.set_trace()
                 #rew = tf.summary.scalar("reward", tf.reduce_mean(reward[:,1]))
                 #summ = sess.run(rew)
@@ -352,6 +352,10 @@ def al_train():
                 print(reward)
                 rewards.append(np.mean(reward[:,1]))
                 gan_rewards = -np.log(reward[:,1]) + np.log(reward[:,0])
+                print("GAN cost:")
+                print(gan_rewards)
+                print("GAN mean cost:")
+                print(np.mean(gan_rewards))
                 # 4.Update G on (X, ^Y ) using reward r
                 # import pdb; pdb.set_trace()
                 decoder_inputs = []
@@ -365,8 +369,8 @@ def al_train():
                 decoder_inputs = np.transpose(np.asarray(decoder_inputs))
                 decoder_inputs = np.squeeze(decoder_inputs)
                 gen_model.step(sess, encoder, decoder_inputs, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN,
-                               reward=reward[:,1])
-                               # reward=gan_rewards)
+                               # reward=reward[:,1])
+                               reward=gan_rewards)
 
             '''dec_gen = []
             for i in range(len(responses)):

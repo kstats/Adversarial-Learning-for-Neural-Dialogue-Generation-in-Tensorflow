@@ -117,9 +117,7 @@ class guided_rnn_model(object):
 
             with tf.name_scope("reward_layer"):
                 softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,1],dtype=tf.float32, initializer=tf.random_normal_initializer())
-                self.test_gilw = softmax_w
                 softmax_b = tf.get_variable("softmax_b",[1],dtype=tf.float32, initializer=tf.random_normal_initializer())
-                self.test_gilb = softmax_b
                 self.reward = tf.squeeze(tf.matmul(out_put,softmax_w)+softmax_b)
             
             with tf.name_scope("logZ_bias"):

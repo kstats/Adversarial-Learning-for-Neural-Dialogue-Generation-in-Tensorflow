@@ -637,7 +637,7 @@ def src_to_gen(source_encoder, source_decoder, _buckets, bucket_id, batch_size):
 
 
 def transform_responses(responses, _buckets, bucket_id):
-    import pdb; pdb.set_trace()
+ #   import pdb; pdb.set_trace()
     decoder_inputs  = []
     dec_size        = _buckets[bucket_id][1]
     

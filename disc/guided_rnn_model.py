@@ -3,7 +3,7 @@ import numpy as np
 
 class guided_rnn_model(object):
 
-    def __init__(self, config, scope_name="disc_rnn", gen_model, buckets, is_training=True, isLstm=False):
+    def __init__(self, config, gen_model,scope_name="disc_rnn", is_training=True, isLstm=False):
         self.scope_name = scope_name
         with tf.variable_scope(self.scope_name):
             self.keep_prob=config.keep_prob
@@ -15,6 +15,7 @@ class guided_rnn_model(object):
             self.mask_r = tf.placeholder(tf.float32,[max_len,None])
             self.context = tf.placeholder(tf.int32, [None,max_len])
             self.response = tf.placeholder(tf.int32, [None,max_len])
+            self.gen_density = tf.placeholder(tf.float32, [None])
 
 
             class_num=config.class_num
@@ -122,27 +123,26 @@ class guided_rnn_model(object):
             
             with tf.name_scope("logZ_bias"):
                 self.logZ_bias = tf.get_variable("bias",[1],dtype=tf.float32, initializer=tf.random_normal_initializer())
-            self.adjusted_rewards = []
-            with tf_name_scope("density_layer"):
-                for i in range(gen_model.buckets):
-                    self.adjusted_rewards.append(self.reward - tf.log(gen_model.output_q[i]) - self.logZ_bias)
-            with tf_name_scope("sigmoid_layer"):
-                self.sigmoid_output = [tf.nn.sigmoid(x) for x in self.adjusted_rewards]
-                self.logits = [tf.log(tf.stack([1-x,x],axis=1)) for x in self.sigmoid_output]
-
+            with tf.name_scope("density_layer"):                
+                self.adjusted_rewards = self.reward - tf.log(self.gen_density) - self.logZ_bias
+            with tf.name_scope("sigmoid_layer"):
+                import pdb; pdb.set_trace()
+                self.sigmoid_output = tf.nn.sigmoid(self.adjusted_rewards)
+                self.logits = tf.squeeze(tf.log(tf.stack([1-self.sigmoid_output,self.sigmoid_output],axis=1)))
+            
             with tf.name_scope("loss"):
                 self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(self.logits,self.target)
                 self.cost = tf.reduce_mean(self.loss)
-
+            
             with tf.name_scope("accuracy"):
                 self.prediction = tf.argmax(self.logits,1)
                 correct_prediction = tf.equal(self.prediction,self.target)
-                self.correct_num=tf.reduce_sum(tf.cast(correct_prediction,tf.float32))
+                self.correct_num = tf.reduce_sum(tf.cast(correct_prediction,tf.float32))
                 self.accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32),name="accuracy")
 
             #add summary
-            loss_summary = tf.summary.scalar("loss",self.cost)
-            accuracy_summary=tf.summary.scalar("accuracy_summary",self.accuracy)
+            # loss_summary = tf.summary.scalar("loss",self.cost)
+            # accuracy_summary=tf.summary.scalar("accuracy_summary",self.accuracy)
 
             if not is_training:
                 return
@@ -152,28 +152,28 @@ class guided_rnn_model(object):
 
             tvars = tf.trainable_variables()
             self.tvars = tvars
+            optimizer = tf.train.GradientDescentOptimizer(self.lr)
             grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars),
-                                          config.max_grad_norm)
+                                      config.max_grad_norm)
+            self.train_op = optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
 
-            self.grads = grads
+            # self.grads = grads
 
 
             # Keep track of gradient values and sparsity (optional)
-            grad_summaries = []
-            for g, v in zip(grads, tvars):
-                if g is not None:
-                    grad_hist_summary = tf.summary.histogram("{}/grad/hist".format(v.name), g)
-                    sparsity_summary = tf.summary.scalar("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
-                    grad_summaries.append(grad_hist_summary)
-                    grad_summaries.append(sparsity_summary)
-            self.grad_summaries_merged = tf.summary.merge(grad_summaries)
+            # grad_summaries = []
+            # for g, v in zip(grads, tvars):
+            #     if g is not None:
+            #         grad_hist_summary = tf.summary.histogram("{}/grad/hist".format(v.name), g)
+            #         sparsity_summary = tf.summary.scalar("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
+            #         grad_summaries.append(grad_hist_summary)
+            #         grad_summaries.append(sparsity_summary)
+            # self.grad_summaries_merged = tf.summary.merge(grad_summaries)
 
-            self.summary =tf.summary.merge([loss_summary,accuracy_summary,self.grad_summaries_merged])
+            # self.summary =tf.summary.merge([loss_summary,accuracy_summary,self.grad_summaries_merged])
 
 
 
-            optimizer = tf.train.GradientDescentOptimizer(self.lr)
-            self.train_op=optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
 
             self.new_lr = tf.placeholder(tf.float32,shape=[],name="new_learning_rate")
             self._lr_update = tf.assign(self.lr,self.new_lr)

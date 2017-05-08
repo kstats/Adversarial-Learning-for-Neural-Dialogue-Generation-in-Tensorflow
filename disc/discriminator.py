@@ -4,6 +4,7 @@ import os
 import time
 import datetime
 import disc_rnn_model as disc_rnn_model
+import guided_rnn_model as guided_rnn_model
 import utils.data_utils as data_utils
 #import utils.conf as conf
 import sys
@@ -32,6 +33,29 @@ def create_model(session, config, is_training):
 
     """Create translation model and initialize or load parameters in session."""
     model = disc_rnn_model.disc_rnn_model(config=config,is_training=is_training, isLstm=True)
+
+    checkpoint_dir = os.path.abspath(os.path.join(config.out_dir, "checkpoints"))
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+    if is_training and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
+        print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+        model.saver.restore(session, ckpt.model_checkpoint_path)        
+        # optimistic_restore(session, ckpt.model_checkpoint_path)
+    else:
+        print("Created Disc_RNN model with fresh parameters.")
+        if is_training:
+            session.run(tf.global_variables_initializer())
+
+    end_time    = time.time()
+    print("Time to create Disc_RNN model: %.2f" % (end_time - start_time))
+
+    return model
+
+def create_guided_model(session, config, gen_model,is_training):
+    
+    start_time  = time.time()        
+
+    """Create translation model and initialize or load parameters in session."""
+    model = guided_rnn_model.guided_rnn_model(config,gen_model,is_training=is_training, isLstm=False)
 
     checkpoint_dir = os.path.abspath(os.path.join(config.out_dir, "checkpoints"))
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)

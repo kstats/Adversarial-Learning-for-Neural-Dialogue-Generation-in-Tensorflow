@@ -110,11 +110,12 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_trai
 
 
 def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id, do_train=True):
+    blen = gen_model.buckets[bucket_id]
+    
     def disc_to_gen_format(inp):
         # inp is a list of context/answer in disc format.
         ctx=inp[:,0,:]
         answer=inp[:,1,:]
-        blen = gen_model.buckets[bucket_id]
 
         rc1 = np.flip(ctx[:,:blen[0]],1)
         rc2 = answer[:,:blen[1]-1]
@@ -123,12 +124,25 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
         rc2 = np.concatenate([np.transpose([go_vec]),rc2],axis=1)
         return rc1, rc2
 
+    # halve everything (gen batch size idiocy)
+
+    batch_size = len(train_inputs)
+    pos = train_inputs[0:batch_size/4,:,:]
+    neg = train_inputs[batch_size/2:batch_size/2+batch_size/4,:,:]
+    train_inputs = np.concatenate([pos,neg])    
+    posl = train_labels[0:batch_size/4]
+    negl = train_labels[batch_size/2:batch_size/2+batch_size/4]
+    train_labels = np.concatenate([posl,negl])
+    posm = train_masks[:,0:batch_size/4,:]
+    negm = train_masks[:,batch_size/2:batch_size/2+batch_size/4,:]
+    train_masks = np.concatenate([posm,negm],1)
+
+    batch_size = batch_size / 2
+
     encoder_inputs, decoder_inputs = disc_to_gen_format(train_inputs)
     feed_dict = {gen_model.forward_only.name : False,
                       gen_model.do_projection.name: True,
                       gen_model.tf_bucket_id: bucket_id }
-    feed_dict[gen_model.reward[l].name] = [1]*gen_model.batch_size
-
     for l in xrange(blen[0]):
         feed_dict[gen_model.encoder_inputs[l].name] = encoder_inputs.T[l]
 
@@ -136,9 +150,9 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
         feed_dict[gen_model.target_weights[l].name] = np.zeros(batch_size)
         feed_dict[gen_model.decoder_inputs[l].name] = decoder_inputs.T[l]
 
+    # import pdb; pdb.set_trace()
     density = sess.run(gen_model.output_q[bucket_id],feed_dict)
  
-    import pdb; pdb.set_trace()
     feed_dict = {disc_model.gen_density: density}
     feed_dict[disc_model.context] = train_inputs[:, 0, :]
     feed_dict[disc_model.response] = train_inputs[:, 1, :]
@@ -148,8 +162,9 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
     feed_dict[disc_model.mask_r] = train_masks[:, :, 1]
 
     disc_model.assign_new_batch_size(sess,len(train_inputs))
-    if do_train:
+    if do_train:        
         fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op]
+        import pdb; pdb.set_trace()
         cost,accuracy,_ = sess.run(fetches,feed_dict)
         print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
         return accuracy
@@ -259,9 +274,9 @@ def al_train():
         initializer = tf.random_uniform_initializer(-1 * disc_config.init_scale, 1 * disc_config.init_scale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             disc_model = discs.create_model(sess, disc_config, is_training=True)
-        gen_model = gens.create_model(sess, gen_config)
         with tf.variable_scope("guided_disc", reuse=None, initializer=initializer):
-            guided_disc_model = discs.create_guided_model(sess, disc_config, gen_model,is_training=True)
+            guided_disc_model = discs.create_guided_model(sess, disc_config, is_training=True)
+        gen_model = gens.create_model(sess, gen_config)
         vocab, rev_vocab, dev_set, train_set = data_util.prepare_data(gen_config)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(gen_config.buckets))]
         train_total_size = float(sum(train_bucket_sizes))
@@ -297,7 +312,7 @@ def al_train():
                 print(train_labels)
                 disc_steps.append((gstep-1) * disc_config.iters + i)
                 disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 disc_l2 = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
                 disc_loss.append(disc_l)
 
@@ -350,7 +365,8 @@ def al_train():
                 decoder_inputs = np.transpose(np.asarray(decoder_inputs))
                 decoder_inputs = np.squeeze(decoder_inputs)
                 gen_model.step(sess, encoder, decoder_inputs, weights, bucket_id, mode=gen_model.SM_POLICY_TRAIN,
-                               reward=gan_rewards)
+                               reward=reward[:,1])
+                               # reward=gan_rewards)
 
             '''dec_gen = []
             for i in range(len(responses)):

@@ -50,12 +50,12 @@ def create_model(session, config, is_training):
 
     return model
 
-def create_guided_model(session, config, gen_model,is_training):
+def create_guided_model(session, config, is_training):
     
     start_time  = time.time()        
 
     """Create translation model and initialize or load parameters in session."""
-    model = guided_rnn_model.guided_rnn_model(config,gen_model,is_training=is_training, isLstm=False)
+    model = guided_rnn_model.guided_rnn_model(config,is_training=is_training, isLstm=False)
 
     checkpoint_dir = os.path.abspath(os.path.join(config.out_dir, "checkpoints"))
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)

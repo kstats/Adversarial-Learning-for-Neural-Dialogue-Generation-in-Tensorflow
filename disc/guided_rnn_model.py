@@ -3,12 +3,11 @@ import numpy as np
 
 class guided_rnn_model(object):
 
-    def __init__(self, config, gen_model,scope_name="disc_rnn", is_training=True, isLstm=False):
+    def __init__(self, config, scope_name="disc_rnn", is_training=True, isLstm=False):
         self.scope_name = scope_name
         with tf.variable_scope(self.scope_name):
             self.keep_prob=config.keep_prob
-            self.batch_size=tf.Variable(0,dtype=tf.int32,trainable=False)
-            self.gen_model = gen_model
+            self.batch_size=tf.Variable(0,dtype=tf.int32,trainable=False)            
             max_len=config.max_len
             self.target = tf.placeholder(tf.int64,[None])
             self.mask_c = tf.placeholder(tf.float32,[max_len,None])
@@ -118,16 +117,20 @@ class guided_rnn_model(object):
 
             with tf.name_scope("reward_layer"):
                 softmax_w = tf.get_variable("softmax_w",[hidden_neural_size,1],dtype=tf.float32, initializer=tf.random_normal_initializer())
+                self.test_gilw = softmax_w
                 softmax_b = tf.get_variable("softmax_b",[1],dtype=tf.float32, initializer=tf.random_normal_initializer())
-                self.reward = tf.matmul(out_put,softmax_w)+softmax_b
+                self.test_gilb = softmax_b
+                self.reward = tf.squeeze(tf.matmul(out_put,softmax_w)+softmax_b)
             
             with tf.name_scope("logZ_bias"):
                 self.logZ_bias = tf.get_variable("bias",[1],dtype=tf.float32, initializer=tf.random_normal_initializer())
             with tf.name_scope("density_layer"):                
                 self.adjusted_rewards = self.reward - tf.log(self.gen_density) - self.logZ_bias
             with tf.name_scope("sigmoid_layer"):
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 self.sigmoid_output = tf.nn.sigmoid(self.adjusted_rewards)
+                self.sigmoid_output = tf.minimum(self.sigmoid_output,1-1e-7)
+                self.sigmoid_output = tf.maximum(self.sigmoid_output,1e-7)
                 self.logits = tf.squeeze(tf.log(tf.stack([1-self.sigmoid_output,self.sigmoid_output],axis=1)))
             
             with tf.name_scope("loss"):

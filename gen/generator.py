@@ -389,11 +389,16 @@ def gen_guided_sample(sess, context, gold_standard, gen_config, model, vocab, bu
         sample_labels.append(1)
         
         ret = get_sampled_sentence(sess, con, vocab, model, gen_config.buckets, bucket_id)
+        print("Got reply:")
+        print(ret)
+        print("For context:")
+        print(con)
+        print("Original Reply was:")
+        print(gold)
         sample_response.append([ret])
         sample_context.append(con)
         sample_labels.append(0)        
         rep.append(ret)
 
-    print("gen_guided_sample returns samples:")
-    print(rep)
+    
     return sample_context, sample_response, sample_labels, rep

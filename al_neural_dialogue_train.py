@@ -169,7 +169,7 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
         fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op]
         cost,accuracy,_ = sess.run(fetches,feed_dict)
         print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
-        return accuracy
+        return cost, accuracy
     else:        
         fetches = [disc_model.cost,disc_model.accuracy,tf.nn.softmax(disc_model.logits)]
         cost,accuracy,probs = sess.run(fetches,feed_dict)
@@ -321,7 +321,7 @@ def al_train():
                 disc_steps.append((gstep-1) * disc_config.iters + i)
                 # disc_l = disc_step(sess, disc_model, train_inputs, train_labels, train_masks)
                 # import pdb; pdb.set_trace()
-                disc_l = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
+                disc_l , accuracy = guided_disc_step(sess, guided_disc_model, gen_model, train_inputs, train_labels, train_masks, bucket_id)
                 disc_loss.append((cumulative_step,disc_l))
                 cumulative_step += 1                
 

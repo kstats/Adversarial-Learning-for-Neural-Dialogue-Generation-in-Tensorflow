@@ -7,7 +7,7 @@ class disc_config(object):
     lr_decay                    = 0.6
     max_grad_norm               = 5    
     keep_prob                   = 1.  
-    batch_size                  = 64
+    batch_size                  = 32
     embed_dim                   = 128
     class_num                   = 2
     init_scale                  = 0.1    
@@ -34,11 +34,11 @@ class gen_config(object):
     
     num_layers                  = 1
     size                        = 512
-    learning_rate               = 0.01
+    learning_rate               = 0.006
     learning_rate_decay_factor  = 0.99
     max_gradient_norm           = 5.0
     keep_prob                   = 1.
-    batch_size                  = 64
+    batch_size                  = 32
     beam_size                   = 5
 
     vocab_path                  = './data/movie_25000'

@@ -166,9 +166,12 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
 
     disc_model.assign_new_batch_size(sess,len(train_inputs))
     if do_train:        
-        fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op]
-        cost,accuracy,_ = sess.run(fetches,feed_dict)
+        fetches = [disc_model.cost,disc_model.accuracy,disc_model.train_op, disc_model.prediction]
+        cost,accuracy,_ ,prediction= sess.run(fetches,feed_dict)
         print("the train cost is: %f and the train accuracy is %f ."%(cost, accuracy))
+        print("Its predictions on training data:")
+        for i in prediction:
+            print(i)
         return cost, accuracy
     else:        
         fetches = [disc_model.cost,disc_model.accuracy,tf.nn.softmax(disc_model.logits)]

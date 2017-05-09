@@ -18,6 +18,10 @@ evl_config  = conf.disc_config
 def gen_pre_train():
     gens.train(gen_config)
 
+def permute_seq(seq, perm):
+    return seq
+    # return np.asarray([seq[perm[i]] for i in range(len(perm))])
+
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, bucket_id, mc_search=False, isDisc=True, temp=True):
     # sample_context2, sample_response2, sample_labels2, responses2 = gens.gen_sample(sess, gen_config, gen_model, vocab,

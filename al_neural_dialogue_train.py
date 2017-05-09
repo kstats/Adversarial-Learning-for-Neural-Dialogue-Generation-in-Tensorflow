@@ -415,7 +415,7 @@ def al_train():
                 pickle.dump(perplexity, open("perplexity.p", "wb"))
                 pickle.dump(gen_steps, open("gen_steps.p", "wb"))
 
-            if gstep > 0 and gstep % 40 == 0:
+            if gstep > 0 and gstep % 10 == 0:
                 gen_model.saver.save(sess, gen_checkpoint_path, global_step=gen_model.global_step)
                 guided_disc_model.saver.save(sess,disc_checkpoint_path,global_step=guided_disc_model.global_step)
 

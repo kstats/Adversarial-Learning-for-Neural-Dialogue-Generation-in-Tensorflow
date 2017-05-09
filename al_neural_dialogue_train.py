@@ -20,8 +20,7 @@ def gen_pre_train():
 
 
 def permute_seq(seq, perm):
-    return [seq[perm[i]] for i in range(len(perm))]
-
+    return np.asarray([seq[perm[i]] for i in range(len(perm))])
 
 # prepare data for discriminator and generator
 def disc_train_data(sess, gen_model, vocab, source_inputs, source_outputs, gen_inputs, gen_outputs, bucket_id, mc_search=False, isDisc=True, temp=True):
@@ -98,7 +97,7 @@ def disc_step(sess, disc_model, train_inputs, train_labels, train_masks, do_trai
     perm = np.random.permutation(len(train_inputs))
     train_inputs = permute_seq(train_inputs,perm)
     train_labels = permute_seq(train_labels,perm)
-    train_masks = np.transpose(permute_seq(np.transpose(train_labels,(1,0,2)),perm),(1,0,2))
+    train_masks = np.transpose(permute_seq(np.transpose(train_masks,(1,0,2)),perm),(1,0,2))
 
     feed_dict={}
 

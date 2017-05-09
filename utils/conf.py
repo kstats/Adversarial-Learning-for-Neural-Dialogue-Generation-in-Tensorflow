@@ -1,39 +1,58 @@
-__author__ = 'MORAN01'
 import os
 class disc_config(object):
-    batch_size = 5
-    lr = 0.1
-    lr_decay = 0.6
-    vocabulary_size = 20000
-    embed_dim = 128
-    hidden_neural_size = 200
-    hidden_layer_num = 3
-    train_dir = 'data/subj0.pkl'
-    max_len = 40
-    valid_num = 100
-    checkpoint_num = 1000
-    init_scale = 0.1
-    class_num = 2
-    keep_prob = 0.5
-    num_epoch = 60
-    max_decay_epoch = 30
-    max_grad_norm = 5
-    out_dir = os.path.abspath(os.path.join(os.path.curdir,"runs"))
-    checkpoint_every = 10
+    
+    hidden_layer_num            = 1
+    hidden_neural_size          = 512
+    lr                          = 0.01
+    lr_decay                    = 0.6
+    max_grad_norm               = 5    
+    keep_prob                   = 1.  
+    batch_size                  = 32
+    embed_dim                   = 128
+    class_num                   = 2
+    init_scale                  = 0.1    
+    
+    vocabulary_size             = 25003    
+
+    train_dir                   = 'data/'
+    train_data_file             = "training500k.txt"
+    max_len                     = 50
+    out_dir                     = os.path.abspath(os.path.join(os.path.curdir,"runs"))
+
+    checkpoint_num              = 1000 
+    checkpoint_every            = 10
+    num_epoch                   = 60
+    max_decay_epoch             = 30
+
+    iters                       = 10
+   # valid_num                   = 100
+
+    #after how many global steps should we pickle?
+    plot_every                  = 1
 
 class gen_config(object):
-    beam_size = 5
-    learning_rate = 0.5
-    learning_rate_decay_factor = 0.99
-    max_gradient_norm = 5.0
-    batch_size = 1
-    size = 12
-    num_layers = 2
-    vocab_size = 10000
-    data_dir = "data/"
-    train_dir = "data/"
-    max_train_data_size = 0
-    steps_per_checkpoint = 200
-    buckets = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]
+    
+    num_layers                  = 1
+    size                        = 512
+    learning_rate               = 0.006
+    learning_rate_decay_factor  = 0.99
+    max_gradient_norm           = 5.0
+    keep_prob                   = 1.
+    batch_size                  = 32
+    beam_size                   = 5
 
+    vocab_path                  = './data/movie_25000'
+    vocab_size                  = 25003
+    
+    data_dir                    = "data/"
+    train_data_file             = "training500k.txt"
+    train_ratio                 = 0.9    
+    max_train_data_size         = 0
+    train_dir                   = "data/"
 
+    steps_per_checkpoint        = 8000
+    steps_per_sample            = 150
+    
+    iters                       = 1
+    force_iters                 = 0
+    buckets                     = [(5, 10), (10, 15), (20, 25), (40, 50), (50, 50)]

@@ -142,6 +142,12 @@ def guided_disc_step(sess, disc_model, gen_model, train_inputs, train_labels, tr
 
         batch_size = batch_size / 2
 
+
+    perm = np.random.permutation(len(train_inputs))
+    train_inputs = permute_seq(train_inputs,perm)
+    train_labels = permute_seq(train_labels,perm)
+    train_masks = np.transpose(permute_seq(np.transpose(train_masks,(1,0,2)),perm),(1,0,2))
+
     encoder_inputs, decoder_inputs = disc_to_gen_format(train_inputs)
     feed_dict = {gen_model.forward_only.name : False,
                       gen_model.do_projection.name: True,
